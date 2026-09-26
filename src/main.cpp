@@ -3,8 +3,7 @@
 
 #include <cstdio>
 
-int main()
-{
+int main() {
     glfwSetErrorCallback([](int code, const char* desc) {
         std::fprintf(stderr, "GLFW error %d: %s\n", code, desc);
     });
@@ -40,6 +39,10 @@ int main()
     // The main loop: poll OS events, render into the back buffer, present it.
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
+
+        // Poll the key's current state; setting the close flag ends the loop on its next check.
+        if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+            glfwSetWindowShouldClose(window, GLFW_TRUE);
 
         int width, height;
         glfwGetFramebufferSize(window, &width, &height);
