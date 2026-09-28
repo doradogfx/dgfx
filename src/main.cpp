@@ -1,6 +1,7 @@
 #include <glad/glad.h> // must come before GLFW so GLFW doesn't pull in the system GL header
 #include <GLFW/glfw3.h>
 
+#include "camera.h"
 #include "shader.h"
 #include "texture.h"
 
@@ -47,18 +48,64 @@ int main() {
         GLuint container = loadTexture(TEXTURE_DIR "container.jpg");
         GLuint face = loadTexture(TEXTURE_DIR "awesomeface.png");
 
-        // Interleaved: each vertex is x, y, z, then r, g, b, then u, v.
+        // A unit cube centered on the origin. Interleaved: each vertex is x, y, z, then u, v.
+        // Corners can't be shared between faces because each face needs its own UVs, so 4 vertices per face.
+        // Each face lists bottom-left, bottom-right, top-right, top-left as seen from outside the cube.
         const float vertices[] = {
-            -0.5f, -0.5f, 0.0f,   1.0f, 0.0f, 0.0f,   0.0f, 0.0f, // bottom-left
-             0.5f, -0.5f, 0.0f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f, // bottom-right
-             0.5f,  0.5f, 0.0f,   0.0f, 0.0f, 1.0f,   1.0f, 1.0f, // top-right
-            -0.5f,  0.5f, 0.0f,   1.0f, 1.0f, 1.0f,   0.0f, 1.0f, // top-left
+            // front (+z)
+            -0.5f, -0.5f,  0.5f,   0.0f, 0.0f,
+             0.5f, -0.5f,  0.5f,   1.0f, 0.0f,
+             0.5f,  0.5f,  0.5f,   1.0f, 1.0f,
+            -0.5f,  0.5f,  0.5f,   0.0f, 1.0f,
+            // back (-z)
+             0.5f, -0.5f, -0.5f,   0.0f, 0.0f,
+            -0.5f, -0.5f, -0.5f,   1.0f, 0.0f,
+            -0.5f,  0.5f, -0.5f,   1.0f, 1.0f,
+             0.5f,  0.5f, -0.5f,   0.0f, 1.0f,
+            // left (-x)
+            -0.5f, -0.5f, -0.5f,   0.0f, 0.0f,
+            -0.5f, -0.5f,  0.5f,   1.0f, 0.0f,
+            -0.5f,  0.5f,  0.5f,   1.0f, 1.0f,
+            -0.5f,  0.5f, -0.5f,   0.0f, 1.0f,
+            // right (+x)
+             0.5f, -0.5f,  0.5f,   0.0f, 0.0f,
+             0.5f, -0.5f, -0.5f,   1.0f, 0.0f,
+             0.5f,  0.5f, -0.5f,   1.0f, 1.0f,
+             0.5f,  0.5f,  0.5f,   0.0f, 1.0f,
+            // top (+y)
+            -0.5f,  0.5f,  0.5f,   0.0f, 0.0f,
+             0.5f,  0.5f,  0.5f,   1.0f, 0.0f,
+             0.5f,  0.5f, -0.5f,   1.0f, 1.0f,
+            -0.5f,  0.5f, -0.5f,   0.0f, 1.0f,
+            // bottom (-y)
+            -0.5f, -0.5f, -0.5f,   0.0f, 0.0f,
+             0.5f, -0.5f, -0.5f,   1.0f, 0.0f,
+             0.5f, -0.5f,  0.5f,   1.0f, 1.0f,
+            -0.5f, -0.5f,  0.5f,   0.0f, 1.0f,
         };
 
-        // Two triangles sharing the diagonal, built by indexing into the 4 vertices.
-        const unsigned int indices[] = {
-            0, 1, 2,
-            2, 3, 0,
+        // Two triangles per face sharing the diagonal, same pattern as a single quad, offset by 4 vertices per face.
+        unsigned int indices[36];
+
+        for (unsigned int f = 0; f < 6; f++) {
+            const unsigned int quad[] = { 0, 1, 2, 2, 3, 0 };
+
+            for (int i = 0; i < 6; i++)
+                indices[f * 6 + i] = f * 4 + quad[i];
+        }
+
+        // Where each cube sits in the world. One mesh, drawn once per position with its own model matrix.
+        const glm::vec3 cubePositions[] = {
+            { 0.0f,  0.0f,   0.0f},
+            { 2.0f,  5.0f, -15.0f},
+            {-1.5f, -2.2f,  -2.5f},
+            {-3.8f, -2.0f, -12.3f},
+            { 2.4f, -0.4f,  -3.5f},
+            {-1.7f,  3.0f,  -7.5f},
+            { 1.3f, -2.0f,  -2.5f},
+            { 1.5f,  2.0f,  -2.5f},
+            { 1.5f,  0.2f,  -1.5f},
+            {-1.3f,  1.0f,  -1.5f},
         };
 
         // The VAO records the attribute layout and which buffers the attributes and indices read from.
@@ -76,16 +123,13 @@ int main() {
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
-        // Stride = bytes from one vertex to the next (8 floats). The offset says where in each vertex the attribute starts.
+        // Stride = bytes from one vertex to the next (5 floats). The offset says where in each vertex the attribute starts.
         // Attribute 0 = position: 3 floats at offset 0.
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), nullptr);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), nullptr);
         glEnableVertexAttribArray(0);
-        // Attribute 1 = color: 3 floats right after the position.
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), reinterpret_cast<void*>(3 * sizeof(float)));
+        // Attribute 1 = texture coordinate: 2 floats right after the position.
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), reinterpret_cast<void*>(3 * sizeof(float)));
         glEnableVertexAttribArray(1);
-        // Attribute 2 = texture coordinate: 2 floats right after the color.
-        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), reinterpret_cast<void*>(6 * sizeof(float)));
-        glEnableVertexAttribArray(2);
 
         shader.use();
 
@@ -98,29 +142,98 @@ int main() {
         // Draw wireframe
         //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
+        // Keep, per pixel, only the fragment closest to the camera. Without it, whatever is drawn last wins,
+        // so back faces can cover front faces.
+        glEnable(GL_DEPTH_TEST);
+
+        Camera camera;
+
+        // Hide the cursor and lock it to the window, so the mouse can turn the camera forever without hitting the screen edge.
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
+        // Raw motion skips the OS pointer acceleration, so the same hand movement always turns the same amount.
+        if (glfwRawMouseMotionSupported())
+            glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
+
+        // Mouse look works on how far the cursor moved since last frame, so remember where it was.
+        double lastX, lastY;
+        glfwGetCursorPos(window, &lastX, &lastY);
+
+        double lastTime = glfwGetTime();
+
         // The main loop: poll OS events, render into the back buffer, present it.
         while (!glfwWindowShouldClose(window)) {
             glfwPollEvents();
+
+            // Seconds since the previous frame. Scaling movement by it keeps the speed the same at any frame rate.
+            const double now = glfwGetTime();
+            const float dt = static_cast<float>(now - lastTime);
+            lastTime = now;
 
             // Poll the key's current state; setting the close flag ends the loop on its next check.
             if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
                 glfwSetWindowShouldClose(window, GLFW_TRUE);
 
+            // Mouse look: horizontal movement turns left/right (yaw), vertical tilts up/down (pitch).
+            // Screen Y grows downward, so moving the mouse up gives a negative dy, which should tilt up: hence the minus.
+            const float sensitivity = 0.1f; // degrees per pixel
+            double x, y;
+            glfwGetCursorPos(window, &x, &y);
+            camera.turn(static_cast<float>(x - lastX) * sensitivity, static_cast<float>(lastY - y) * sensitivity);
+            lastX = x;
+            lastY = y;
+
+            // WASD moves along where the camera looks (flying, so looking up and pressing W goes up).
+            // Space/Left Ctrl move straight up/down in the world.
+            const float speed = 2.5f * dt; // units per second
+            const glm::vec3 front = camera.front();
+            const glm::vec3 right = camera.right();
+
+            if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+                camera.position += front * speed;
+            if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+                camera.position -= front * speed;
+            if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+                camera.position += right * speed;
+            if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+                camera.position -= right * speed;
+            if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
+                camera.position += Camera::worldUp * speed;
+            if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
+                camera.position -= Camera::worldUp * speed;
+
             int width, height;
             glfwGetFramebufferSize(window, &width, &height);
+
+            // Minimized: the framebuffer is 0x0, so there's nothing to draw and the aspect ratio would divide by zero.
+            // Sleep until the next event instead of spinning through empty frames.
+            if (width == 0 || height == 0) {
+                glfwWaitEvents();
+                continue;
+            }
+
             glViewport(0, 0, width, height);
 
             glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-            glClear(GL_COLOR_BUFFER_BIT);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-            // Transforms apply to the vertex right to left: rotate around the quad's center first, then move it.
-            // Swap the two lines and it orbits the window center instead.
-            glm::mat4 transform(1.0f); // identity
-            transform = glm::rotate(transform, static_cast<float>(glfwGetTime()), glm::vec3(0.0f, 0.0f, 1.0f));
-            transform = glm::translate(transform, glm::vec3(0.5f, -0.5f, 0.0f));
-            shader.setMat4("transform", transform);
+            // 45 degree vertical field of view, window aspect ratio (so nothing stretches), and near/far clip planes.
+            // A Vulkan backend would need a different projection here: depth range 0..1 instead of -1..1, and Y flipped.
+            const glm::mat4 projection = glm::perspective(glm::radians(45.0f), static_cast<float>(width) / height, 0.1f, 100.0f);
+            shader.setMat4("projection", projection);
+            shader.setMat4("view", camera.view());
 
-            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
+            const float time = static_cast<float>(now);
+
+            for (int i = 0; i < 10; i++) {
+                // Right to left: rotate the cube around its own center, then move it to its place in the world.
+                // The index offsets the angle so the cubes don't all spin in sync.
+                glm::mat4 model = glm::translate(glm::mat4(1.0f), cubePositions[i]);
+                model = glm::rotate(model, time + i, glm::vec3(1.0f, 0.3f, 0.5f));
+                shader.setMat4("model", model);
+
+                glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, nullptr);
+            }
 
             glfwSwapBuffers(window);
         }

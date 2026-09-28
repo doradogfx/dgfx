@@ -1,7 +1,7 @@
 #version 460 core
 
-in vec3 vColor;
 in vec2 vUV;
+
 out vec4 color;
 
 // binding = N reads from texture unit N, so the app doesn't need to set these uniforms.

@@ -1,19 +1,18 @@
 #version 460 core
 
-// Position, color and texture coordinate arrive through attribute locations 0, 1 and 2, fed from the vertex buffer.
+// Position and texture coordinate arrive through attribute locations 0 and 1, fed from the vertex buffer.
 layout(location = 0) in vec3 pos;
-layout(location = 1) in vec3 col;
-layout(location = 2) in vec2 uv;
+layout(location = 1) in vec2 uv;
 
-// Handed to the fragment shader, which receives them interpolated across the triangle.
-out vec3 vColor;
+// Handed to the fragment shader, which receives it interpolated across the triangle.
 out vec2 vUV;
 
-// Moves/rotates/scales the vertices. Applied as matrix * vector, so the matrix goes on the left.
-uniform mat4 transform;
+// Each matrix moves the vertex into the next space. Applied right to left, so model goes first.
+uniform mat4 model;      // object -> world: where this object is placed
+uniform mat4 view;       // world -> camera: the world as seen from the camera
+uniform mat4 projection; // camera -> clip space: perspective, far things get smaller
 
 void main() {
-    gl_Position = transform * vec4(pos, 1.0);
-    vColor = col;
+    gl_Position = projection * view * model * vec4(pos, 1.0);
     vUV = uv;
 }
