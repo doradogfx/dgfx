@@ -1,6 +1,7 @@
 #pragma once
 
 #include <glad/glad.h>
+#include <glm/glm.hpp>
 
 class Shader {
 public:
@@ -19,6 +20,7 @@ public:
     void setVec2(const char* name, float x, float y) const;
     void setVec3(const char* name, float x, float y, float z) const;
     void setVec4(const char* name, float x, float y, float z, float w) const;
+    void setMat4(const char* name, const glm::mat4& value) const;
 
     // Stop shaders from being copied, as they would share the same OpenGL program
     Shader(const Shader&) = delete;

@@ -22,12 +22,21 @@ FetchContent_Declare(stb
     GIT_TAG 2c980bb59875b0d32144a71867fbdebb2f77cd20)
 FetchContent_MakeAvailable(stb)
 
+# GLM: header-only math library (vectors, matrices, transforms). Graphics-API agnostic.
+set(GLM_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(GLM_BUILD_LIBRARY OFF CACHE BOOL "" FORCE)
+FetchContent_Declare(glm
+    GIT_REPOSITORY https://github.com/g-truc/glm.git
+    GIT_TAG 1.0.3
+    GIT_SHALLOW TRUE)
+FetchContent_MakeAvailable(glm)
+
 # GLAD: OpenGL 4.6 core function loader, pre-generated and vendored in external/glad.
 add_library(glad STATIC external/glad/src/glad.c)
 target_include_directories(glad PUBLIC external/glad/include)
 
 add_executable(dgfx src/main.cpp src/shader.cpp src/texture.cpp)
-target_link_libraries(dgfx PRIVATE glfw glad)
+target_link_libraries(dgfx PRIVATE glfw glad glm::glm)
 target_include_directories(dgfx PRIVATE ${stb_SOURCE_DIR})
 
 # Shaders and textures are loaded from the source tree, so the exe finds them regardless of its working directory.

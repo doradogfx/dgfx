@@ -9,8 +9,11 @@ layout(location = 2) in vec2 uv;
 out vec3 vColor;
 out vec2 vUV;
 
+// Moves/rotates/scales the vertices. Applied as matrix * vector, so the matrix goes on the left.
+uniform mat4 transform;
+
 void main() {
-    gl_Position = vec4(pos, 1.0);
+    gl_Position = transform * vec4(pos, 1.0);
     vColor = col;
     vUV = uv;
 }

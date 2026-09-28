@@ -4,6 +4,8 @@
 #include "shader.h"
 #include "texture.h"
 
+#include <glm/gtc/matrix_transform.hpp>
+
 #include <cstdio>
 
 int main() {
@@ -110,6 +112,13 @@ int main() {
 
             glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
             glClear(GL_COLOR_BUFFER_BIT);
+
+            // Transforms apply to the vertex right to left: rotate around the quad's center first, then move it.
+            // Swap the two lines and it orbits the window center instead.
+            glm::mat4 transform(1.0f); // identity
+            transform = glm::rotate(transform, static_cast<float>(glfwGetTime()), glm::vec3(0.0f, 0.0f, 1.0f));
+            transform = glm::translate(transform, glm::vec3(0.5f, -0.5f, 0.0f));
+            shader.setMat4("transform", transform);
 
             glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
 

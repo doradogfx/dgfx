@@ -6,6 +6,10 @@ A game engine written in C++ as a learning project: the goal is to understand ho
 
 - [GLFW](https://www.glfw.org/): cross-platform window creation, OpenGL context and input handling.
 - [GLAD](https://github.com/Dav1dde/glad): OpenGL function loader (OpenGL 4.6 core), generated with the [GLAD web generator](https://glad.dav1d.de/).
+- [stb_image](https://github.com/nothings/stb): single-header image loader (PNG, JPG, ...) used to load textures.
+- [GLM](https://github.com/g-truc/glm): header-only math library for vectors, matrices and transformations.
+
+GLFW, stb_image and GLM are downloaded automatically by CMake at configure time (FetchContent). GLAD is vendored in `external/glad`.
 
 ## Building
 

@@ -1,5 +1,7 @@
 #include "shader.h"
 
+#include <glm/gtc/type_ptr.hpp>
+
 #include <cstdio>
 #include <fstream>
 #include <sstream>
@@ -90,4 +92,9 @@ void Shader::setVec3(const char* name, float x, float y, float z) const {
 
 void Shader::setVec4(const char* name, float x, float y, float z, float w) const {
     glProgramUniform4f(id, glGetUniformLocation(id, name), x, y, z, w);
+}
+
+void Shader::setMat4(const char* name, const glm::mat4& value) const {
+    // GLM and GLSL are both column-major, so no transpose.
+    glProgramUniformMatrix4fv(id, glGetUniformLocation(id, name), 1, GL_FALSE, glm::value_ptr(value));
 }
