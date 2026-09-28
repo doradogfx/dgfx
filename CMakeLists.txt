@@ -20,5 +20,9 @@ FetchContent_MakeAvailable(glfw)
 add_library(glad STATIC external/glad/src/glad.c)
 target_include_directories(glad PUBLIC external/glad/include)
 
-add_executable(dgfx src/main.cpp)
+add_executable(dgfx src/main.cpp src/shader.cpp)
 target_link_libraries(dgfx PRIVATE glfw glad)
+
+# Shaders are loaded from the source tree, so the exe finds them regardless of its working directory.
+# ponytail: absolute source path, copy shaders next to the exe if it ever ships without the repo.
+target_compile_definitions(dgfx PRIVATE SHADER_DIR="${CMAKE_SOURCE_DIR}/shaders/")
