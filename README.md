@@ -1,5 +1,7 @@
 # dgfx
 
+![Lit spheres with different materials on a floor, rendered by dgfx](docs/images/sphere-phong-lightning.png)
+
 A game engine written in C++ as a learning project: the goal is to understand how game engines are designed and implemented by building one step by step, one feature at a time.
 
 ## Features
