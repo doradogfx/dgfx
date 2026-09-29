@@ -90,8 +90,16 @@ void Shader::setVec3(const char* name, float x, float y, float z) const {
     glProgramUniform3f(id, glGetUniformLocation(id, name), x, y, z);
 }
 
+void Shader::setVec3(const char* name, const glm::vec3& value) const {
+    setVec3(name, value.x, value.y, value.z);
+}
+
 void Shader::setVec4(const char* name, float x, float y, float z, float w) const {
     glProgramUniform4f(id, glGetUniformLocation(id, name), x, y, z, w);
+}
+
+void Shader::setMat3(const char* name, const glm::mat3& value) const {
+    glProgramUniformMatrix3fv(id, glGetUniformLocation(id, name), 1, GL_FALSE, glm::value_ptr(value));
 }
 
 void Shader::setMat4(const char* name, const glm::mat4& value) const {
