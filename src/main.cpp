@@ -13,6 +13,7 @@
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 
@@ -35,6 +36,33 @@ static Material plastic(glm::vec3 color, float shininess = 128.0f) {
 static Material rubber(glm::vec3 color) {
     return {nullptr, nullptr, color, glm::vec3(0.1f), 8.0f};
 }
+
+enum LightType { Directional = 0, Point = 1, Spot = 2 };
+
+struct Light {
+    int type = Point;
+    glm::vec3 direction{-0.2f, -1.0f, -0.3f}; // directional: sun from above, slightly angled
+    glm::vec3 ambient{0.1f};                  // 0 = faces turned away from the light go pitch black
+    glm::vec3 diffuse{1.0f};                  // the light's color; try (1, 0.3, 0.3) for a red light
+    glm::vec3 specular{1.0f};                 // 0 = no highlights on anything
+    float constant = 1.0f;                    // attenuation, see kAttenuationPresets
+    float linear = 0.22f;
+    float quadratic = 0.20f;
+    float innerAngle = 12.5f;                 // spot cone, degrees: full brightness inside
+    float outerAngle = 17.5f;                 // degrees: dark outside, soft fade between inner and outer
+};
+
+// Attenuation factors that make a light reach about `range` units, from the widely used Ogre3D table.
+struct AttenuationPreset {
+    const char* name;
+    float linear;
+    float quadratic;
+};
+
+static const AttenuationPreset kAttenuationPresets[] = {
+    {"7", 0.7f, 1.8f}, {"13", 0.35f, 0.44f}, {"20", 0.22f, 0.20f},
+    {"32", 0.14f, 0.07f}, {"50", 0.09f, 0.032f}, {"100", 0.045f, 0.0075f},
+};
 
 int main() {
     glfwSetErrorCallback([](int code, const char* desc) {
@@ -74,32 +102,24 @@ int main() {
         Shader lit(SHADER_DIR "lit.vert", SHADER_DIR "lit.frag");
         Shader lamp(SHADER_DIR "lit.vert", SHADER_DIR "light.frag");
 
-        // Light parameters, editable live from the ImGui panel. Each is an intensity per term;
-        // the materials decide how much of it each surface reflects.
-        glm::vec3 lightAmbient(0.1f);  // 0 = faces turned away from the light go pitch black
-        glm::vec3 lightDiffuse(1.0f);  // the light's color; try (1, 0.3, 0.3) for a red light
-        glm::vec3 lightSpecular(1.0f); // 0 = no highlights on anything
-        bool blinn = true;             // false = classic Phong, to compare the highlights
-        bool orbitLight = true;        // false = light stays still at its starting position
+        Light light;
+        bool blinn = true;      // false = classic Phong, to compare the highlights
+        bool orbitLight = true; // point light: false = stays still at its starting position
 
-        // Render options, also on the panel.
         bool wireframe = false;
-        bool showDemo = false; // ImGui's built-in demo window
+        bool showDemo = false; // ImGui demo window
 
-        // Geometry lives on the GPU until these go out of scope (before the GL context is destroyed).
         const Mesh cube = makeCube();
         const Mesh sphere = makeSphere();
 
-        // Same for textures. White is bound wherever a material has no map, so the tint alone decides the color.
         const Texture white(glm::vec3(1.0f));
         const Texture crateDiffuse(TEXTURE_DIR "container2.png");
         const Texture crateSpecular(TEXTURE_DIR "container2_specular.png");
 
-        // The scene: a few meshes, each placed, turned, sized and given a material.
         struct Object {
             const Mesh* mesh;
             glm::vec3 position;
-            float yaw; // degrees around Y
+            float yaw;
             glm::vec3 scale;
             Material material;
         };
@@ -271,10 +291,48 @@ int main() {
             ImGui::TextDisabled("Tab: toggle camera / UI mode");
 
             ImGui::SeparatorText("Light");
-            ImGui::ColorEdit3("Ambient", glm::value_ptr(lightAmbient));
-            ImGui::ColorEdit3("Diffuse", glm::value_ptr(lightDiffuse));
-            ImGui::ColorEdit3("Specular", glm::value_ptr(lightSpecular));
-            ImGui::Checkbox("Orbit", &orbitLight);
+            ImGui::Combo("Type", &light.type, "Directional\0Point\0Spot (flashlight)\0");
+            ImGui::ColorEdit3("Ambient", glm::value_ptr(light.ambient));
+            ImGui::ColorEdit3("Diffuse", glm::value_ptr(light.diffuse));
+            ImGui::ColorEdit3("Specular", glm::value_ptr(light.specular));
+
+            if (light.type == Directional)
+                ImGui::DragFloat3("Direction", glm::value_ptr(light.direction), 0.01f, -1.0f, 1.0f);
+
+            if (light.type == Point || light.type == Spot) {
+                // Range presets fill linear/quadratic; the drags below fine-tune them.
+                const char* current = "custom";
+
+                for (const AttenuationPreset& p : kAttenuationPresets) {
+                    if (p.linear == light.linear && p.quadratic == light.quadratic)
+                        current = p.name;
+                }
+
+                if (ImGui::BeginCombo("Range", current)) {
+                    for (const AttenuationPreset& p : kAttenuationPresets) {
+                        if (ImGui::Selectable(p.name, p.name == current)) {
+                            light.linear = p.linear;
+                            light.quadratic = p.quadratic;
+                        }
+                    }
+
+                    ImGui::EndCombo();
+                }
+
+                ImGui::DragFloat("Linear", &light.linear, 0.001f, 0.0f, 2.0f, "%.4f");
+                ImGui::DragFloat("Quadratic", &light.quadratic, 0.001f, 0.0f, 2.0f, "%.4f");
+            }
+
+            if (light.type == Spot) {
+                ImGui::SliderFloat("Inner angle", &light.innerAngle, 1.0f, 60.0f, "%.1f deg");
+                // Outer can't be smaller than inner: the fade would divide by a negative width and invert the cone.
+                ImGui::SliderFloat("Outer angle", &light.outerAngle, light.innerAngle, 60.0f, "%.1f deg");
+                light.outerAngle = std::max(light.outerAngle, light.innerAngle);
+            }
+
+            if (light.type == Point)
+                ImGui::Checkbox("Orbit", &orbitLight);
+
             ImGui::Checkbox("Blinn-Phong", &blinn);
 
             ImGui::SeparatorText("Render");
@@ -297,20 +355,39 @@ int main() {
             const glm::mat4 projection = glm::perspective(glm::radians(camera.fov), static_cast<float>(width) / height, 0.1f, 100.0f);
             const glm::mat4 view = camera.view();
 
-            // The light circles the scene (radius 2, 1.5 above the floor), so shading changes without moving the camera.
-            const float angle = orbitLight ? static_cast<float>(now) : 0.0f;
-            const glm::vec3 lightPos(2.0f * std::cos(angle), 1.5f, 2.0f * std::sin(angle));
+            // Where the light is and where it points, for the types that need it.
+            // Point: circles the scene (radius 2, 1.5 above the floor), so shading changes without moving the camera.
+            // Spot: a flashlight in the camera, pointing where you look.
+            glm::vec3 lightPos(0.0f);
+            glm::vec3 lightDir = light.direction;
+
+            if (light.type == Point) {
+                const float angle = orbitLight ? static_cast<float>(now) : 0.0f;
+                lightPos = glm::vec3(2.0f * std::cos(angle), 1.5f, 2.0f * std::sin(angle));
+            } else if (light.type == Spot) {
+                lightPos = camera.position;
+                lightDir = camera.front();
+            }
 
             lit.use();
             lit.setMat4("projection", projection);
             lit.setMat4("view", view);
-            lit.setVec3("light.position", lightPos);
             lit.setVec3("viewPos", camera.position); // specular depends on where the viewer is
-            // Sent every frame since the panel can change them. Struct fields are separate uniforms, "struct.field".
-            lit.setVec3("light.ambient", lightAmbient);
-            lit.setVec3("light.diffuse", lightDiffuse);
-            lit.setVec3("light.specular", lightSpecular);
             lit.setBool("blinn", blinn);
+
+            // Sent every frame since the panel can change them. Struct fields are separate uniforms, "struct.field".
+            lit.setInt("light.type", light.type);
+            lit.setVec3("light.position", lightPos);
+            lit.setVec3("light.direction", lightDir);
+            lit.setVec3("light.ambient", light.ambient);
+            lit.setVec3("light.diffuse", light.diffuse);
+            lit.setVec3("light.specular", light.specular);
+            lit.setFloat("light.constant", light.constant);
+            lit.setFloat("light.linear", light.linear);
+            lit.setFloat("light.quadratic", light.quadratic);
+            // The shader compares cosines (cheaper than angles per pixel), so convert once here.
+            lit.setFloat("light.cutOff", std::cos(glm::radians(light.innerAngle)));
+            lit.setFloat("light.outerCutOff", std::cos(glm::radians(light.outerAngle)));
 
             for (const Object& obj : objects) {
                 // Right to left: scale, then rotate around the object's center, then move it into place.
@@ -335,17 +412,20 @@ int main() {
                 obj.mesh->draw();
             }
 
-            // The lamp: a small sphere where the light is, so you can see where the light comes from.
-            glm::mat4 lampModel = glm::translate(glm::mat4(1.0f), lightPos);
-            lampModel = glm::scale(lampModel, glm::vec3(0.2f));
+            // The lamp: a small sphere where a point light is, so you can see where the light comes from.
+            // A directional light has no position, and a spot sits inside the camera, so neither gets one.
+            if (light.type == Point) {
+                glm::mat4 lampModel = glm::translate(glm::mat4(1.0f), lightPos);
+                lampModel = glm::scale(lampModel, glm::vec3(0.2f));
 
-            lamp.use();
-            lamp.setMat4("projection", projection);
-            lamp.setMat4("view", view);
-            lamp.setMat4("model", lampModel);
-            lamp.setVec3("lightColor", lightDiffuse); // the lamp shows the light's main color
+                lamp.use();
+                lamp.setMat4("projection", projection);
+                lamp.setMat4("view", view);
+                lamp.setMat4("model", lampModel);
+                lamp.setVec3("lightColor", light.diffuse); // the lamp shows the light's main color
 
-            sphere.draw();
+                sphere.draw();
+            }
 
             // UI last, on top of the scene. Always filled, even when the scene is drawn as wireframe.
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);

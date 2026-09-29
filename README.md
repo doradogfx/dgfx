@@ -12,7 +12,7 @@ A game engine written in C++ as a learning project: the goal is to understand ho
 - **Textures** loaded with stb_image (PNG/JPG), mipmapped and bound to multiple texture units.
 - **3D transforms**: model/view/projection matrices, perspective projection, depth testing.
 - **Fly camera**: mouse look, WASD movement, zoom, frame-rate independent speed.
-- **Lighting**: Blinn-Phong with a point light and per-object materials: diffuse/specular colors and shininess, with optional lighting maps (diffuse + specular textures) for per-pixel materials.
+- **Lighting**: Blinn-Phong with directional (sun), point (distance attenuation) and spot (camera flashlight with soft edges) lights, and per-object materials: diffuse/specular colors and shininess, with optional lighting maps (diffuse + specular textures) for per-pixel materials.
 - **Debug UI** with Dear ImGui: live editing of light colors and lighting options, wireframe toggle, FPS counter.
 
 ## Controls
