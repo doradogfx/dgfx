@@ -2,6 +2,7 @@
 #include <GLFW/glfw3.h>
 
 #include "camera.h"
+#include "mesh.h"
 #include "shader.h"
 
 #include <glm/gtc/matrix_transform.hpp>
@@ -71,55 +72,13 @@ int main() {
         const bool blinn = true;             // false = classic Phong, to compare the highlights
         const bool orbitLight = true;        // false = light stays still at its starting position
 
-        // A unit cube centered on the origin. Interleaved: each vertex is x, y, z, then the normal nx, ny, nz.
-        // The normal points straight out of the face. Corners can't be shared between faces because each face
-        // needs its own normal, so 4 vertices per face.
-        // Each face lists bottom-left, bottom-right, top-right, top-left as seen from outside the cube.
-        const float vertices[] = {
-            // front (+z)
-            -0.5f, -0.5f,  0.5f,    0.0f,  0.0f,  1.0f,
-             0.5f, -0.5f,  0.5f,    0.0f,  0.0f,  1.0f,
-             0.5f,  0.5f,  0.5f,    0.0f,  0.0f,  1.0f,
-            -0.5f,  0.5f,  0.5f,    0.0f,  0.0f,  1.0f,
-            // back (-z)
-             0.5f, -0.5f, -0.5f,    0.0f,  0.0f, -1.0f,
-            -0.5f, -0.5f, -0.5f,    0.0f,  0.0f, -1.0f,
-            -0.5f,  0.5f, -0.5f,    0.0f,  0.0f, -1.0f,
-             0.5f,  0.5f, -0.5f,    0.0f,  0.0f, -1.0f,
-            // left (-x)
-            -0.5f, -0.5f, -0.5f,   -1.0f,  0.0f,  0.0f,
-            -0.5f, -0.5f,  0.5f,   -1.0f,  0.0f,  0.0f,
-            -0.5f,  0.5f,  0.5f,   -1.0f,  0.0f,  0.0f,
-            -0.5f,  0.5f, -0.5f,   -1.0f,  0.0f,  0.0f,
-            // right (+x)
-             0.5f, -0.5f,  0.5f,    1.0f,  0.0f,  0.0f,
-             0.5f, -0.5f, -0.5f,    1.0f,  0.0f,  0.0f,
-             0.5f,  0.5f, -0.5f,    1.0f,  0.0f,  0.0f,
-             0.5f,  0.5f,  0.5f,    1.0f,  0.0f,  0.0f,
-            // top (+y)
-            -0.5f,  0.5f,  0.5f,    0.0f,  1.0f,  0.0f,
-             0.5f,  0.5f,  0.5f,    0.0f,  1.0f,  0.0f,
-             0.5f,  0.5f, -0.5f,    0.0f,  1.0f,  0.0f,
-            -0.5f,  0.5f, -0.5f,    0.0f,  1.0f,  0.0f,
-            // bottom (-y)
-            -0.5f, -0.5f, -0.5f,    0.0f, -1.0f,  0.0f,
-             0.5f, -0.5f, -0.5f,    0.0f, -1.0f,  0.0f,
-             0.5f, -0.5f,  0.5f,    0.0f, -1.0f,  0.0f,
-            -0.5f, -0.5f,  0.5f,    0.0f, -1.0f,  0.0f,
-        };
+        // Geometry lives on the GPU until these go out of scope (before the GL context is destroyed).
+        const Mesh cube = makeCube();
+        const Mesh sphere = makeSphere();
 
-        // Two triangles per face sharing the diagonal, same pattern as a single quad, offset by 4 vertices per face.
-        unsigned int indices[36];
-
-        for (unsigned int f = 0; f < 6; f++) {
-            const unsigned int quad[] = { 0, 1, 2, 2, 3, 0 };
-
-            for (int i = 0; i < 6; i++)
-                indices[f * 6 + i] = f * 4 + quad[i];
-        }
-
-        // The scene: every object is the same cube mesh, placed, turned, sized and given a different material.
+        // The scene: a few meshes, each placed, turned, sized and given a material.
         struct Object {
+            const Mesh* mesh;
             glm::vec3 position;
             float yaw; // degrees around Y
             glm::vec3 scale;
@@ -131,36 +90,13 @@ int main() {
         const Material gold = {{0.24725f, 0.1995f, 0.0745f}, {0.75164f, 0.60648f, 0.22648f}, {0.628281f, 0.555802f, 0.366065f}, 51.2f * 4.0f}; // table value is for Phong
 
         const Object objects[] = {
-            {{ 0.0f, -0.55f,  0.0f},  0.0f, {10.0f, 0.1f, 10.0f}, rubber({0.6f, 0.6f, 0.6f})},            // floor, top surface at y = -0.5
-            {{ 0.0f,  0.0f,   0.0f},  0.0f, { 1.0f, 1.0f,  1.0f}, plastic({1.0f, 0.5f, 0.3f})},           // orange
-            {{ 2.0f,  0.0f,  -1.0f}, 30.0f, { 1.0f, 1.0f,  1.0f}, plastic({0.3f, 0.5f, 1.0f}, 512.0f)},   // blue, glossy
-            {{-1.5f, -0.25f,  1.0f},  0.0f, { 0.5f, 0.5f,  0.5f}, rubber({0.4f, 0.9f, 0.4f})},            // small green
-            {{ 1.5f, -0.25f,  1.0f}, 45.0f, { 1.0f, 1.0f,  1.0f}, plastic({0.7f, 0.05f, 0.87f})},         // purple
-            {{-2.2f,  0.0f,  -1.2f}, 15.0f, { 1.0f, 1.0f,  1.0f}, gold},                                  // gold
+            {&cube,   { 0.0f, -0.55f,  0.0f},  0.0f, {10.0f, 0.1f, 10.0f}, rubber({0.6f, 0.6f, 0.6f})},            // floor, top surface at y = -0.5
+            {&sphere, { 0.0f,  0.0f,   0.0f},  0.0f, { 1.0f, 1.0f,  1.0f}, plastic({1.0f, 0.5f, 0.3f})},           // orange
+            {&sphere, { 2.0f,  0.0f,  -1.0f}, 30.0f, { 1.0f, 1.0f,  1.0f}, plastic({0.3f, 0.5f, 1.0f}, 512.0f)},   // blue, glossy
+            {&sphere, {-1.5f, -0.25f,  1.0f},  0.0f, { 0.5f, 0.5f,  0.5f}, rubber({0.4f, 0.9f, 0.4f})},            // small green
+            {&sphere, { 1.5f,  0.0f,   1.0f}, 45.0f, { 1.0f, 1.0f,  1.0f}, plastic({0.7f, 0.05f, 0.87f})},         // purple
+            {&sphere, {-2.2f,  0.0f,  -1.2f}, 15.0f, { 1.0f, 1.0f,  1.0f}, gold},                                  // gold
         };
-
-        // The VAO records the attribute layout and which buffers the attributes and indices read from.
-        GLuint vao, vbo, ebo;
-        glGenVertexArrays(1, &vao);
-        glBindVertexArray(vao);
-
-        // Copy the vertex data into GPU memory.
-        glGenBuffers(1, &vbo);
-        glBindBuffer(GL_ARRAY_BUFFER, vbo);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-        // Copy the indices too. The EBO binding is stored in the VAO, so it must stay bound while the VAO is.
-        glGenBuffers(1, &ebo);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-
-        // Stride = bytes from one vertex to the next (6 floats). The offset says where in each vertex the attribute starts.
-        // Attribute 0 = position: 3 floats at offset 0.
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), nullptr);
-        glEnableVertexAttribArray(0);
-        // Attribute 1 = normal: 3 floats right after the position.
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), reinterpret_cast<void*>(3 * sizeof(float)));
-        glEnableVertexAttribArray(1);
 
         // Values that never change during the run only need to be sent once.
         // Struct fields are separate uniforms in GL, addressed as "struct.field".
@@ -199,6 +135,8 @@ int main() {
         });
 
         double lastTime = glfwGetTime();
+
+        //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
         // The main loop: poll OS events, render into the back buffer, present it.
         while (!glfwWindowShouldClose(window)) {
@@ -312,10 +250,10 @@ int main() {
                 lit.setVec3("material.specular", obj.material.specular);
                 lit.setFloat("material.shininess", obj.material.shininess);
 
-                glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, nullptr);
+                obj.mesh->draw();
             }
 
-            // The lamp: a small cube where the light is, so you can see where the light comes from.
+            // The lamp: a small sphere where the light is, so you can see where the light comes from.
             glm::mat4 lampModel = glm::translate(glm::mat4(1.0f), lightPos);
             lampModel = glm::scale(lampModel, glm::vec3(0.2f));
 
@@ -324,14 +262,10 @@ int main() {
             lamp.setMat4("view", view);
             lamp.setMat4("model", lampModel);
 
-            glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, nullptr);
+            sphere.draw();
 
             glfwSwapBuffers(window);
         }
-
-        glDeleteBuffers(1, &ebo);
-        glDeleteBuffers(1, &vbo);
-        glDeleteVertexArrays(1, &vao);
     }
 
     glfwDestroyWindow(window);

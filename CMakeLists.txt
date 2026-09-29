@@ -35,7 +35,7 @@ FetchContent_MakeAvailable(glm)
 add_library(glad STATIC external/glad/src/glad.c)
 target_include_directories(glad PUBLIC external/glad/include)
 
-add_executable(dgfx src/main.cpp src/shader.cpp src/texture.cpp)
+add_executable(dgfx src/main.cpp src/mesh.cpp src/shader.cpp src/texture.cpp)
 target_link_libraries(dgfx PRIVATE glfw glad glm::glm)
 target_include_directories(dgfx PRIVATE ${stb_SOURCE_DIR})
 
