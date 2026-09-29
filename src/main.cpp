@@ -9,6 +9,23 @@
 #include <cmath>
 #include <cstdio>
 
+struct Material {
+    glm::vec3 ambient;
+    glm::vec3 diffuse;
+    glm::vec3 specular;
+    float shininess;
+};
+
+// Plastic: the surface color everywhere, plus a white-ish highlight (the light's color, not the surface's).
+static Material plastic(glm::vec3 color, float shininess = 128.0f) {
+    return {color, color, glm::vec3(0.5f), shininess};
+}
+
+// Rubber: the surface color, almost no highlight, and what little there is is wide and dull.
+static Material rubber(glm::vec3 color) {
+    return {color, color, glm::vec3(0.1f), 8.0f};
+}
+
 int main() {
     glfwSetErrorCallback([](int code, const char* desc) {
         std::fprintf(stderr, "GLFW error %d: %s\n", code, desc);
@@ -47,12 +64,12 @@ int main() {
         Shader lit(SHADER_DIR "lit.vert", SHADER_DIR "lit.frag");
         Shader lamp(SHADER_DIR "lit.vert", SHADER_DIR "light.frag");
 
-        // Phong Lighting parameters.
-        const glm::vec3 lightColor(1.0f, 1.0f, 1.0f);
-        const float ambientStrength = 0.1f;
-        const float specularStrength = 0.5f;
-        const float shininess = 32.0f;
-        const bool orbitLight = true;
+        // Light parameters. Each is an intensity per term; the materials decide how much of it each surface reflects.
+        const glm::vec3 lightAmbient(0.1f);  // 0 = faces turned away from the light go pitch black
+        const glm::vec3 lightDiffuse(1.0f);  // the light's color; try (1, 0.3, 0.3) for a red light
+        const glm::vec3 lightSpecular(1.0f); // 0 = no highlights on anything
+        const bool blinn = true;             // false = classic Phong, to compare the highlights
+        const bool orbitLight = true;        // false = light stays still at its starting position
 
         // A unit cube centered on the origin. Interleaved: each vertex is x, y, z, then the normal nx, ny, nz.
         // The normal points straight out of the face. Corners can't be shared between faces because each face
@@ -101,20 +118,25 @@ int main() {
                 indices[f * 6 + i] = f * 4 + quad[i];
         }
 
-        // The scene: every object is the same cube mesh, placed, turned, sized and colored differently.
+        // The scene: every object is the same cube mesh, placed, turned, sized and given a different material.
         struct Object {
             glm::vec3 position;
             float yaw; // degrees around Y
             glm::vec3 scale;
-            glm::vec3 color;
+            Material material;
         };
 
+        // Gold, from the classic OpenGL material tables (devernay.free.fr/cours/opengl/materials.html).
+        // Unlike plastic, a metal's highlight takes the metal's own color.
+        const Material gold = {{0.24725f, 0.1995f, 0.0745f}, {0.75164f, 0.60648f, 0.22648f}, {0.628281f, 0.555802f, 0.366065f}, 51.2f * 4.0f}; // table value is for Phong
+
         const Object objects[] = {
-            {{ 0.0f, -0.55f,  0.0f},  0.0f, {10.0f, 0.1f, 10.0f}, {0.6f, 0.6f, 0.6f}}, // floor, top surface at y = -0.5
-            {{ 0.0f,  0.0f,   0.0f},  0.0f, { 1.0f, 1.0f,  1.0f}, {1.0f, 0.5f, 0.3f}}, // orange
-            {{ 2.0f,  0.0f,  -1.0f}, 30.0f, { 1.0f, 1.0f,  1.0f}, {0.3f, 0.5f, 1.0f}}, // blue
-            {{-1.5f, -0.25f,  1.0f},  0.0f, { 0.5f, 0.5f,  0.5f}, {0.4f, 0.9f, 0.4f}}, // small green
-            {{ 1.5f, -0.25f,  1.0f}, 45.0f, { 1.0f, 1.0f,  1.0f}, {0.7f, 0.05f, 0.87f}}, // purple
+            {{ 0.0f, -0.55f,  0.0f},  0.0f, {10.0f, 0.1f, 10.0f}, rubber({0.6f, 0.6f, 0.6f})},            // floor, top surface at y = -0.5
+            {{ 0.0f,  0.0f,   0.0f},  0.0f, { 1.0f, 1.0f,  1.0f}, plastic({1.0f, 0.5f, 0.3f})},           // orange
+            {{ 2.0f,  0.0f,  -1.0f}, 30.0f, { 1.0f, 1.0f,  1.0f}, plastic({0.3f, 0.5f, 1.0f}, 512.0f)},   // blue, glossy
+            {{-1.5f, -0.25f,  1.0f},  0.0f, { 0.5f, 0.5f,  0.5f}, rubber({0.4f, 0.9f, 0.4f})},            // small green
+            {{ 1.5f, -0.25f,  1.0f}, 45.0f, { 1.0f, 1.0f,  1.0f}, plastic({0.7f, 0.05f, 0.87f})},         // purple
+            {{-2.2f,  0.0f,  -1.2f}, 15.0f, { 1.0f, 1.0f,  1.0f}, gold},                                  // gold
         };
 
         // The VAO records the attribute layout and which buffers the attributes and indices read from.
@@ -141,11 +163,12 @@ int main() {
         glEnableVertexAttribArray(1);
 
         // Values that never change during the run only need to be sent once.
-        lit.setVec3("lightColor", lightColor);
-        lit.setFloat("ambientStrength", ambientStrength);
-        lit.setFloat("specularStrength", specularStrength);
-        lit.setFloat("shininess", shininess);
-        lamp.setVec3("lightColor", lightColor);
+        // Struct fields are separate uniforms in GL, addressed as "struct.field".
+        lit.setVec3("light.ambient", lightAmbient);
+        lit.setVec3("light.diffuse", lightDiffuse);
+        lit.setVec3("light.specular", lightSpecular);
+        lit.setBool("blinn", blinn);
+        lamp.setVec3("lightColor", lightDiffuse); // the lamp shows the light's main color
 
         glEnable(GL_DEPTH_TEST);
 
@@ -268,7 +291,7 @@ int main() {
             lit.use();
             lit.setMat4("projection", projection);
             lit.setMat4("view", view);
-            lit.setVec3("lightPos", lightPos);
+            lit.setVec3("light.position", lightPos);
             lit.setVec3("viewPos", camera.position); // specular depends on where the viewer is
 
             for (const Object& obj : objects) {
@@ -284,7 +307,10 @@ int main() {
 
                 lit.setMat4("model", model);
                 lit.setMat3("normalMatrix", normalMatrix);
-                lit.setVec3("objectColor", obj.color);
+                lit.setVec3("material.ambient", obj.material.ambient);
+                lit.setVec3("material.diffuse", obj.material.diffuse);
+                lit.setVec3("material.specular", obj.material.specular);
+                lit.setFloat("material.shininess", obj.material.shininess);
 
                 glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, nullptr);
             }
