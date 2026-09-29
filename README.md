@@ -9,8 +9,6 @@ A game engine written in C++ as a learning project: the goal is to understand ho
 - [stb_image](https://github.com/nothings/stb): single-header image loader (PNG, JPG, ...) used to load textures.
 - [GLM](https://github.com/g-truc/glm): header-only math library for vectors, matrices and transformations.
 
-GLFW, stb_image and GLM are downloaded automatically by CMake at configure time (FetchContent). GLAD is vendored in `external/glad`.
-
 ## Building
 
 Requires CMake 3.20+ and a C++20 compiler.

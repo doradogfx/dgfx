@@ -9,6 +9,7 @@ struct Camera {
     glm::vec3 position{0.0f, 0.0f, 4.0f};
     float yaw = -90.0f; // degrees around the world Y axis. 0 looks down +X, so -90 looks down -Z (into the screen)
     float pitch = 0.0f; // degrees up/down
+    float fov = 45.0f;  // vertical field of view in degrees. Smaller = zoomed in
 
     static constexpr glm::vec3 worldUp{0.0f, 1.0f, 0.0f};
 
@@ -34,5 +35,11 @@ struct Camera {
     void turn(float yawDelta, float pitchDelta) {
         yaw += yawDelta;
         pitch = glm::clamp(pitch + pitchDelta, -89.0f, 89.0f);
+    }
+
+    // Zoom by narrowing/widening the field of view (degrees; positive zooms in).
+    // Near 0 the image blows up to a few pixels; past ~90 it distorts like a fisheye.
+    void zoom(float amount) {
+        fov = glm::clamp(fov - amount, 1.0f, 90.0f);
     }
 };

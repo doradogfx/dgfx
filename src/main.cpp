@@ -149,7 +149,9 @@ int main() {
         Camera camera;
 
         // Hide the cursor and lock it to the window, so the mouse can turn the camera forever without hitting the screen edge.
+        // Released when the window loses focus, grabbed again by clicking in the window.
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        bool cursorCaptured = true;
 
         // Raw motion skips the OS pointer acceleration, so the same hand movement always turns the same amount.
         if (glfwRawMouseMotionSupported())
@@ -158,6 +160,15 @@ int main() {
         // Mouse look works on how far the cursor moved since last frame, so remember where it was.
         double lastX, lastY;
         glfwGetCursorPos(window, &lastX, &lastY);
+
+        // The scroll wheel has no current state to poll, GLFW only reports it through a callback.
+        // The callback adds to this, the loop consumes it. The window's user pointer is how the
+        // capture-less callback finds it.
+        double scroll = 0.0;
+        glfwSetWindowUserPointer(window, &scroll);
+        glfwSetScrollCallback(window, [](GLFWwindow* w, double, double yOffset) {
+            *static_cast<double*>(glfwGetWindowUserPointer(w)) += yOffset;
+        });
 
         double lastTime = glfwGetTime();
 
@@ -174,18 +185,40 @@ int main() {
             if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
                 glfwSetWindowShouldClose(window, GLFW_TRUE);
 
+            // Give the cursor back when switching to another window; take it again on a click inside this one.
+            if (cursorCaptured && !glfwGetWindowAttrib(window, GLFW_FOCUSED)) {
+                glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+                cursorCaptured = false;
+            } else if (!cursorCaptured && glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
+                glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+                cursorCaptured = true;
+                // Start measuring from here, or the distance moved while free would turn the camera in one jump.
+                glfwGetCursorPos(window, &lastX, &lastY);
+            }
+
             // Mouse look: horizontal movement turns left/right (yaw), vertical tilts up/down (pitch).
             // Screen Y grows downward, so moving the mouse up gives a negative dy, which should tilt up: hence the minus.
             const float sensitivity = 0.1f; // degrees per pixel
             double x, y;
             glfwGetCursorPos(window, &x, &y);
-            camera.turn(static_cast<float>(x - lastX) * sensitivity, static_cast<float>(lastY - y) * sensitivity);
+
+            if (cursorCaptured)
+                camera.turn(static_cast<float>(x - lastX) * sensitivity, static_cast<float>(lastY - y) * sensitivity);
+
             lastX = x;
             lastY = y;
 
+            // Scroll up zooms in, 2 degrees of field of view per wheel notch.
+            camera.zoom(static_cast<float>(scroll) * 2.0f);
+            scroll = 0.0;
+
             // WASD moves along where the camera looks (flying, so looking up and pressing W goes up).
-            // Space/Left Ctrl move straight up/down in the world.
-            const float speed = 2.5f * dt; // units per second
+            // Space/Left Ctrl move straight up/down in the world. Holding Left Shift moves 4x faster.
+            float speed = 2.5f * dt; // units per second
+
+            if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
+                speed *= 4.0f;
+
             const glm::vec3 front = camera.front();
             const glm::vec3 right = camera.right();
 
@@ -217,9 +250,9 @@ int main() {
             glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-            // 45 degree vertical field of view, window aspect ratio (so nothing stretches), and near/far clip planes.
+            // Camera's vertical field of view, window aspect ratio (so nothing stretches), and near/far clip planes.
             // A Vulkan backend would need a different projection here: depth range 0..1 instead of -1..1, and Y flipped.
-            const glm::mat4 projection = glm::perspective(glm::radians(45.0f), static_cast<float>(width) / height, 0.1f, 100.0f);
+            const glm::mat4 projection = glm::perspective(glm::radians(camera.fov), static_cast<float>(width) / height, 0.1f, 100.0f);
             shader.setMat4("projection", projection);
             shader.setMat4("view", camera.view());
 
