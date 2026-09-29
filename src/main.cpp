@@ -7,6 +7,11 @@
 #include "texture.h"
 
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
+#include <imgui.h>
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_opengl3.h>
 
 #include <cmath>
 #include <cstdio>
@@ -69,12 +74,17 @@ int main() {
         Shader lit(SHADER_DIR "lit.vert", SHADER_DIR "lit.frag");
         Shader lamp(SHADER_DIR "lit.vert", SHADER_DIR "light.frag");
 
-        // Light parameters. Each is an intensity per term; the materials decide how much of it each surface reflects.
-        const glm::vec3 lightAmbient(0.1f);  // 0 = faces turned away from the light go pitch black
-        const glm::vec3 lightDiffuse(1.0f);  // the light's color; try (1, 0.3, 0.3) for a red light
-        const glm::vec3 lightSpecular(1.0f); // 0 = no highlights on anything
-        const bool blinn = true;             // false = classic Phong, to compare the highlights
-        const bool orbitLight = true;        // false = light stays still at its starting position
+        // Light parameters, editable live from the ImGui panel. Each is an intensity per term;
+        // the materials decide how much of it each surface reflects.
+        glm::vec3 lightAmbient(0.1f);  // 0 = faces turned away from the light go pitch black
+        glm::vec3 lightDiffuse(1.0f);  // the light's color; try (1, 0.3, 0.3) for a red light
+        glm::vec3 lightSpecular(1.0f); // 0 = no highlights on anything
+        bool blinn = true;             // false = classic Phong, to compare the highlights
+        bool orbitLight = true;        // false = light stays still at its starting position
+
+        // Render options, also on the panel.
+        bool wireframe = false;
+        bool showDemo = false; // ImGui's built-in demo window
 
         // Geometry lives on the GPU until these go out of scope (before the GL context is destroyed).
         const Mesh cube = makeCube();
@@ -113,32 +123,15 @@ int main() {
             {&cube,   {-3.2f,  0.0f,   0.6f}, 10.0f, { 1.0f, 1.0f,  1.0f}, crate},                                 // crate, left
         };
 
-        // Values that never change during the run only need to be sent once.
-        // Struct fields are separate uniforms in GL, addressed as "struct.field".
-        lit.setVec3("light.ambient", lightAmbient);
-        lit.setVec3("light.diffuse", lightDiffuse);
-        lit.setVec3("light.specular", lightSpecular);
-        lit.setBool("blinn", blinn);
-        lamp.setVec3("lightColor", lightDiffuse); // the lamp shows the light's main color
-
         glEnable(GL_DEPTH_TEST);
 
         Camera camera;
         camera.position = glm::vec3(0.0f, 2.0f, 6.0f);
         camera.pitch = -15.0f;
 
-        // Hide the cursor and lock it to the window, so the mouse can turn the camera forever without hitting the screen edge.
-        // Released when the window loses focus, grabbed again by clicking in the window.
-        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-        bool cursorCaptured = true;
-
         // Raw motion skips the OS pointer acceleration, so the same hand movement always turns the same amount.
         if (glfwRawMouseMotionSupported())
             glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
-
-        // Mouse look works on how far the cursor moved since last frame, so remember where it was.
-        double lastX, lastY;
-        glfwGetCursorPos(window, &lastX, &lastY);
 
         // The scroll wheel has no current state to poll, GLFW only reports it through a callback.
         // The callback adds to this, the loop consumes it. The window's user pointer is how the
@@ -149,9 +142,36 @@ int main() {
             *static_cast<double*>(glfwGetWindowUserPointer(w)) += yOffset;
         });
 
-        double lastTime = glfwGetTime();
+        // ImGui. Must come after our callbacks: with install_callbacks = true it installs its own and chains
+        // to the ones already set, so both ImGui and our scroll zoom see the events.
+        ImGui::CreateContext();
+        ImGui_ImplGlfw_InitForOpenGL(window, true);
+        ImGui_ImplOpenGL3_Init("#version 460");
+        ImGuiIO& io = ImGui::GetIO();
 
-        //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        // Two input modes. Camera mode: cursor hidden and locked to the window, so the mouse can turn the camera
+        // forever without hitting the screen edge. UI mode: normal cursor, for clicking the ImGui panel.
+        // While the cursor is captured ImGui is told to ignore the mouse, so the hidden cursor can't click widgets.
+        bool cursorCaptured = false;
+        double lastX, lastY; // mouse look works on how far the cursor moved since last frame
+
+        auto setCaptured = [&](bool captured) {
+            cursorCaptured = captured;
+            glfwSetInputMode(window, GLFW_CURSOR, captured ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
+
+            if (captured)
+                io.ConfigFlags |= ImGuiConfigFlags_NoMouse;
+            else
+                io.ConfigFlags &= ~ImGuiConfigFlags_NoMouse;
+
+            // Start measuring from here, or the distance moved while free would turn the camera in one jump.
+            glfwGetCursorPos(window, &lastX, &lastY);
+        };
+
+        setCaptured(true);
+        bool tabWasDown = false;
+
+        double lastTime = glfwGetTime();
 
         // The main loop: poll OS events, render into the back buffer, present it.
         while (!glfwWindowShouldClose(window)) {
@@ -166,16 +186,24 @@ int main() {
             if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
                 glfwSetWindowShouldClose(window, GLFW_TRUE);
 
-            // Give the cursor back when switching to another window; take it again on a click inside this one.
-            if (cursorCaptured && !glfwGetWindowAttrib(window, GLFW_FOCUSED)) {
-                glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-                cursorCaptured = false;
-            } else if (!cursorCaptured && glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
-                glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-                cursorCaptured = true;
-                // Start measuring from here, or the distance moved while free would turn the camera in one jump.
-                glfwGetCursorPos(window, &lastX, &lastY);
-            }
+            // io.WantCapture* say whether ImGui is using the mouse/keyboard (hovering or typing in the panel).
+            // They were updated by last frame's ImGui::NewFrame, which is recent enough.
+
+            // Tab switches between camera and UI mode. Act only on the frame it goes down, or holding it would
+            // toggle every frame. Not while typing in a text field, where Tab belongs to ImGui.
+            const bool tabDown = glfwGetKey(window, GLFW_KEY_TAB) == GLFW_PRESS;
+
+            if (tabDown && !tabWasDown && !io.WantCaptureKeyboard)
+                setCaptured(!cursorCaptured);
+
+            tabWasDown = tabDown;
+
+            // Give the cursor back when switching to another window. In UI mode, a click that isn't on the panel
+            // goes back to camera mode.
+            if (cursorCaptured && !glfwGetWindowAttrib(window, GLFW_FOCUSED))
+                setCaptured(false);
+            else if (!cursorCaptured && glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS && !io.WantCaptureMouse)
+                setCaptured(true);
 
             // Mouse look: horizontal movement turns left/right (yaw), vertical tilts up/down (pitch).
             // Screen Y grows downward, so moving the mouse up gives a negative dy, which should tilt up: hence the minus.
@@ -189,32 +217,37 @@ int main() {
             lastX = x;
             lastY = y;
 
-            // Scroll up zooms in, 2 degrees of field of view per wheel notch.
-            camera.zoom(static_cast<float>(scroll) * 2.0f);
+            // Scroll up zooms in, 2 degrees of field of view per wheel notch. Over the panel, the scroll is ImGui's.
+            if (!io.WantCaptureMouse)
+                camera.zoom(static_cast<float>(scroll) * 2.0f);
+
             scroll = 0.0;
 
             // WASD moves along where the camera looks (flying, so looking up and pressing W goes up).
             // Space/Left Ctrl move straight up/down in the world. Holding Left Shift moves 4x faster.
-            float speed = 2.5f * dt; // units per second
+            // Skipped while typing in the panel, so text input doesn't fly the camera around.
+            if (!io.WantCaptureKeyboard) {
+                float speed = 2.5f * dt; // units per second
 
-            if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
-                speed *= 4.0f;
+                if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
+                    speed *= 4.0f;
 
-            const glm::vec3 front = camera.front();
-            const glm::vec3 right = camera.right();
+                const glm::vec3 front = camera.front();
+                const glm::vec3 right = camera.right();
 
-            if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-                camera.position += front * speed;
-            if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-                camera.position -= front * speed;
-            if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-                camera.position += right * speed;
-            if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-                camera.position -= right * speed;
-            if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
-                camera.position += Camera::worldUp * speed;
-            if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
-                camera.position -= Camera::worldUp * speed;
+                if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+                    camera.position += front * speed;
+                if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+                    camera.position -= front * speed;
+                if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+                    camera.position += right * speed;
+                if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+                    camera.position -= right * speed;
+                if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
+                    camera.position += Camera::worldUp * speed;
+                if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
+                    camera.position -= Camera::worldUp * speed;
+            }
 
             int width, height;
             glfwGetFramebufferSize(window, &width, &height);
@@ -226,7 +259,34 @@ int main() {
                 continue;
             }
 
+            // Build this frame's UI. ImGui is immediate mode: the panel is described from scratch every frame, and
+            // each widget edits the variable it's given in place, so a changed value is used right away below.
+            ImGui_ImplOpenGL3_NewFrame();
+            ImGui_ImplGlfw_NewFrame();
+            ImGui::NewFrame();
+
+            ImGui::SetNextWindowPos(ImVec2(10.0f, 10.0f), ImGuiCond_FirstUseEver);
+            ImGui::Begin("dgfx");
+            ImGui::Text("%.1f FPS (%.2f ms)", io.Framerate, 1000.0f / io.Framerate);
+            ImGui::TextDisabled("Tab: toggle camera / UI mode");
+
+            ImGui::SeparatorText("Light");
+            ImGui::ColorEdit3("Ambient", glm::value_ptr(lightAmbient));
+            ImGui::ColorEdit3("Diffuse", glm::value_ptr(lightDiffuse));
+            ImGui::ColorEdit3("Specular", glm::value_ptr(lightSpecular));
+            ImGui::Checkbox("Orbit", &orbitLight);
+            ImGui::Checkbox("Blinn-Phong", &blinn);
+
+            ImGui::SeparatorText("Render");
+            ImGui::Checkbox("Wireframe", &wireframe);
+            ImGui::Checkbox("ImGui demo", &showDemo);
+            ImGui::End();
+
+            if (showDemo)
+                ImGui::ShowDemoWindow(&showDemo);
+
             glViewport(0, 0, width, height);
+            glPolygonMode(GL_FRONT_AND_BACK, wireframe ? GL_LINE : GL_FILL);
 
             // Dark background so the lighting stands out.
             glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
@@ -246,6 +306,11 @@ int main() {
             lit.setMat4("view", view);
             lit.setVec3("light.position", lightPos);
             lit.setVec3("viewPos", camera.position); // specular depends on where the viewer is
+            // Sent every frame since the panel can change them. Struct fields are separate uniforms, "struct.field".
+            lit.setVec3("light.ambient", lightAmbient);
+            lit.setVec3("light.diffuse", lightDiffuse);
+            lit.setVec3("light.specular", lightSpecular);
+            lit.setBool("blinn", blinn);
 
             for (const Object& obj : objects) {
                 // Right to left: scale, then rotate around the object's center, then move it into place.
@@ -278,11 +343,22 @@ int main() {
             lamp.setMat4("projection", projection);
             lamp.setMat4("view", view);
             lamp.setMat4("model", lampModel);
+            lamp.setVec3("lightColor", lightDiffuse); // the lamp shows the light's main color
 
             sphere.draw();
 
+            // UI last, on top of the scene. Always filled, even when the scene is drawn as wireframe.
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+            ImGui::Render();
+            ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
             glfwSwapBuffers(window);
         }
+
+        // Before the GL context goes away: the OpenGL backend frees its own GL objects.
+        ImGui_ImplOpenGL3_Shutdown();
+        ImGui_ImplGlfw_Shutdown();
+        ImGui::DestroyContext();
     }
 
     glfwDestroyWindow(window);

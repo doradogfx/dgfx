@@ -31,12 +31,31 @@ FetchContent_Declare(glm
     GIT_SHALLOW TRUE)
 FetchContent_MakeAvailable(glm)
 
+# Dear ImGui: immediate-mode UI for debug panels. No CMake project, so its sources are built as a static lib,
+# together with the GLFW (input) and OpenGL 3+ (rendering) backends. The GL backend has its own loader, no GLAD needed.
+FetchContent_Declare(imgui
+    GIT_REPOSITORY https://github.com/ocornut/imgui.git
+    GIT_TAG v1.92.9
+    GIT_SHALLOW TRUE)
+FetchContent_MakeAvailable(imgui)
+
+add_library(imgui STATIC
+    ${imgui_SOURCE_DIR}/imgui.cpp
+    ${imgui_SOURCE_DIR}/imgui_draw.cpp
+    ${imgui_SOURCE_DIR}/imgui_tables.cpp
+    ${imgui_SOURCE_DIR}/imgui_widgets.cpp
+    ${imgui_SOURCE_DIR}/imgui_demo.cpp
+    ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp
+    ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp)
+target_include_directories(imgui PUBLIC ${imgui_SOURCE_DIR} ${imgui_SOURCE_DIR}/backends)
+target_link_libraries(imgui PUBLIC glfw)
+
 # GLAD: OpenGL 4.6 core function loader, pre-generated and vendored in external/glad.
 add_library(glad STATIC external/glad/src/glad.c)
 target_include_directories(glad PUBLIC external/glad/include)
 
 add_executable(dgfx src/main.cpp src/mesh.cpp src/shader.cpp src/texture.cpp)
-target_link_libraries(dgfx PRIVATE glfw glad glm::glm)
+target_link_libraries(dgfx PRIVATE glfw glad glm::glm imgui)
 target_include_directories(dgfx PRIVATE ${stb_SOURCE_DIR})
 
 # Shaders and textures are loaded from the source tree, so the exe finds them regardless of its working directory.

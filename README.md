@@ -13,6 +13,7 @@ A game engine written in C++ as a learning project: the goal is to understand ho
 - **3D transforms**: model/view/projection matrices, perspective projection, depth testing.
 - **Fly camera**: mouse look, WASD movement, zoom, frame-rate independent speed.
 - **Lighting**: Blinn-Phong with a point light and per-object materials: diffuse/specular colors and shininess, with optional lighting maps (diffuse + specular textures) for per-pixel materials.
+- **Debug UI** with Dear ImGui: live editing of light colors and lighting options, wireframe toggle, FPS counter.
 
 ## Controls
 
@@ -23,7 +24,8 @@ A game engine written in C++ as a learning project: the goal is to understand ho
 | Space / Left Ctrl | Move up / down |
 | Left Shift | Move faster |
 | Scroll wheel | Zoom |
-| Click in window | Capture the cursor (released when the window loses focus) |
+| Tab | Toggle camera mode (cursor captured) / UI mode (cursor free, to use the panel) |
+| Click outside the panel | Back to camera mode (the cursor is also released when the window loses focus) |
 | Esc | Quit |
 
 ## External libraries
@@ -32,6 +34,7 @@ A game engine written in C++ as a learning project: the goal is to understand ho
 - [GLAD](https://github.com/Dav1dde/glad): OpenGL function loader (OpenGL 4.6 core), generated with the [GLAD web generator](https://glad.dav1d.de/).
 - [stb_image](https://github.com/nothings/stb): single-header image loader (PNG, JPG, ...) used to load textures.
 - [GLM](https://github.com/g-truc/glm): header-only math library for vectors, matrices and transformations.
+- [Dear ImGui](https://github.com/ocornut/imgui): immediate-mode UI for the debug panel (GLFW + OpenGL 3 backends).
 
 ## Building
 
