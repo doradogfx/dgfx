@@ -4,27 +4,31 @@
 #include "camera.h"
 #include "mesh.h"
 #include "shader.h"
+#include "texture.h"
 
 #include <glm/gtc/matrix_transform.hpp>
 
 #include <cmath>
 #include <cstdio>
 
+// How a surface reflects light. Mirrors the Material struct and maps in lit.frag.
+// The maps give per-pixel colors that the tints multiply; a null map means "none" (a white texture is bound instead).
 struct Material {
-    glm::vec3 ambient;
-    glm::vec3 diffuse;
-    glm::vec3 specular;
+    const Texture* diffuseMap;
+    const Texture* specularMap;
+    glm::vec3 diffuse;  // tint for the diffuse map, or the whole color when there's no map
+    glm::vec3 specular; // tint for the specular map, or the whole highlight color when there's no map
     float shininess;
 };
 
 // Plastic: the surface color everywhere, plus a white-ish highlight (the light's color, not the surface's).
 static Material plastic(glm::vec3 color, float shininess = 128.0f) {
-    return {color, color, glm::vec3(0.5f), shininess};
+    return {nullptr, nullptr, color, glm::vec3(0.5f), shininess};
 }
 
 // Rubber: the surface color, almost no highlight, and what little there is is wide and dull.
 static Material rubber(glm::vec3 color) {
-    return {color, color, glm::vec3(0.1f), 8.0f};
+    return {nullptr, nullptr, color, glm::vec3(0.1f), 8.0f};
 }
 
 int main() {
@@ -76,6 +80,11 @@ int main() {
         const Mesh cube = makeCube();
         const Mesh sphere = makeSphere();
 
+        // Same for textures. White is bound wherever a material has no map, so the tint alone decides the color.
+        const Texture white(glm::vec3(1.0f));
+        const Texture crateDiffuse(TEXTURE_DIR "container2.png");
+        const Texture crateSpecular(TEXTURE_DIR "container2_specular.png");
+
         // The scene: a few meshes, each placed, turned, sized and given a material.
         struct Object {
             const Mesh* mesh;
@@ -87,7 +96,11 @@ int main() {
 
         // Gold, from the classic OpenGL material tables (devernay.free.fr/cours/opengl/materials.html).
         // Unlike plastic, a metal's highlight takes the metal's own color.
-        const Material gold = {{0.24725f, 0.1995f, 0.0745f}, {0.75164f, 0.60648f, 0.22648f}, {0.628281f, 0.555802f, 0.366065f}, 51.2f * 4.0f}; // table value is for Phong
+        const Material gold = {nullptr, nullptr, {0.75164f, 0.60648f, 0.22648f}, {0.628281f, 0.555802f, 0.366065f}, 51.2f * 4.0f}; // table value is for Phong
+
+        // Wooden crate with a steel rim. The specular map is black over the wood and bright over the metal,
+        // so only the rim catches highlights. White tints: the maps alone decide the colors.
+        const Material crate = {&crateDiffuse, &crateSpecular, glm::vec3(1.0f), glm::vec3(1.0f), 128.0f};
 
         const Object objects[] = {
             {&cube,   { 0.0f, -0.55f,  0.0f},  0.0f, {10.0f, 0.1f, 10.0f}, rubber({0.6f, 0.6f, 0.6f})},            // floor, top surface at y = -0.5
@@ -96,6 +109,8 @@ int main() {
             {&sphere, {-1.5f, -0.25f,  1.0f},  0.0f, { 0.5f, 0.5f,  0.5f}, rubber({0.4f, 0.9f, 0.4f})},            // small green
             {&sphere, { 1.5f,  0.0f,   1.0f}, 45.0f, { 1.0f, 1.0f,  1.0f}, plastic({0.7f, 0.05f, 0.87f})},         // purple
             {&sphere, {-2.2f,  0.0f,  -1.2f}, 15.0f, { 1.0f, 1.0f,  1.0f}, gold},                                  // gold
+            {&cube,   { 0.0f,  0.0f,   2.4f}, 25.0f, { 1.0f, 1.0f,  1.0f}, crate},                                 // crate, front
+            {&cube,   {-3.2f,  0.0f,   0.6f}, 10.0f, { 1.0f, 1.0f,  1.0f}, crate},                                 // crate, left
         };
 
         // Values that never change during the run only need to be sent once.
@@ -245,7 +260,9 @@ int main() {
 
                 lit.setMat4("model", model);
                 lit.setMat3("normalMatrix", normalMatrix);
-                lit.setVec3("material.ambient", obj.material.ambient);
+                // Maps go to the units the shader's samplers read (layout binding 0 and 1).
+                (obj.material.diffuseMap ? obj.material.diffuseMap : &white)->bind(0);
+                (obj.material.specularMap ? obj.material.specularMap : &white)->bind(1);
                 lit.setVec3("material.diffuse", obj.material.diffuse);
                 lit.setVec3("material.specular", obj.material.specular);
                 lit.setFloat("material.shininess", obj.material.shininess);

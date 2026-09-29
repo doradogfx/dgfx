@@ -27,6 +27,9 @@ Mesh::Mesh(const std::vector<Vertex>& vertices, const std::vector<unsigned int>&
     // Attribute 1 = normal: 3 floats.
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), reinterpret_cast<void*>(offsetof(Vertex, normal)));
     glEnableVertexAttribArray(1);
+    // Attribute 2 = texture coordinate: 2 floats.
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), reinterpret_cast<void*>(offsetof(Vertex, uv)));
+    glEnableVertexAttribArray(2);
 }
 
 Mesh::~Mesh() {
@@ -44,7 +47,7 @@ Mesh makeCube() {
     // The normal points straight out of the face. Corners can't be shared between faces because each face
     // needs its own normal, so 4 vertices per face.
     // Each face lists bottom-left, bottom-right, top-right, top-left as seen from outside the cube.
-    const std::vector<Vertex> vertices = {
+    std::vector<Vertex> vertices = {
         // front (+z)
         {{-0.5f, -0.5f,  0.5f}, { 0.0f,  0.0f,  1.0f}},
         {{ 0.5f, -0.5f,  0.5f}, { 0.0f,  0.0f,  1.0f}},
@@ -77,6 +80,13 @@ Mesh makeCube() {
         {{-0.5f, -0.5f,  0.5f}, { 0.0f, -1.0f,  0.0f}},
     };
 
+    // Every face shows the whole image: its 4 corners, in the same bottom-left, bottom-right, top-right,
+    // top-left order as the vertices, map to the image's 4 corners.
+    const glm::vec2 corners[] = {{0.0f, 0.0f}, {1.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f}};
+
+    for (size_t i = 0; i < vertices.size(); i++)
+        vertices[i].uv = corners[i % 4];
+
     // Two triangles per face sharing the diagonal, same pattern as a single quad, offset by 4 vertices per face.
     std::vector<unsigned int> indices;
 
@@ -100,7 +110,12 @@ Mesh makeSphere(int segments, int rings) {
 
             // Point on a sphere of radius 1: this is also the normal, the direction straight out from the center.
             const glm::vec3 dir(std::sin(theta) * std::cos(phi), std::cos(theta), std::sin(theta) * std::sin(phi));
-            vertices.push_back({dir * 0.5f, dir});
+            // The image wraps around like a world map: u goes once around (0 to 1),
+            // v runs from the north pole (1, the image's top) down to the south pole (0).
+            // The duplicated seam column is what lets the last column have u = 1 while the first has u = 0.
+            const glm::vec2 uv(static_cast<float>(s) / segments, 1.0f - static_cast<float>(r) / rings);
+
+            vertices.push_back({dir * 0.5f, dir, uv});
         }
     }
 

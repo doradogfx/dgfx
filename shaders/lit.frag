@@ -2,15 +2,22 @@
 
 in vec3 vPos;
 in vec3 vNormal;
+in vec2 vUV;
 
 out vec4 color;
 
+// Colors are tints, multiplied with what the maps below return at this pixel.
+// Textured materials use white tints; solid-color ones get a 1x1 white map, leaving just the tint.
 struct Material {
-    vec3 ambient;
-    vec3 diffuse;
-    vec3 specular;
+    vec3 diffuse;    // surface color (also used for ambient)
+    vec3 specular;   // highlight color
     float shininess;
 };
+
+// Lighting maps: material colors that vary per pixel. They live outside the struct because
+// layout(binding) isn't allowed on struct members, and binding = N saves setting the unit from C++.
+layout(binding = 0) uniform sampler2D diffuseMap;  // the surface's color, like a regular texture
+layout(binding = 1) uniform sampler2D specularMap; // where it shines: black = no highlight, white = full
 
 struct Light {
     vec3 position; // world space
@@ -31,12 +38,16 @@ void main() {
     vec3 l = normalize(light.position - vPos);
     vec3 v = normalize(viewPos - vPos);
 
+    // This pixel's material colors. A greyscale specular map works directly: grey (r = g = b) scales all channels equally.
+    vec3 albedo = texture(diffuseMap, vUV).rgb * material.diffuse;
+    vec3 specColor = texture(specularMap, vUV).rgb * material.specular;
+
     // Ambient: a constant floor, a cheap stand-in for light bouncing around the scene.
-    vec3 ambient = light.ambient * material.ambient;
+    vec3 ambient = light.ambient * albedo;
 
     // Diffuse: brightest when the surface faces the light, fading to 0 at 90 degrees.
     // dot of two unit vectors = cos of the angle between them; max() drops faces turned away (negative).
-    vec3 diffuse = light.diffuse * max(dot(n, l), 0.0) * material.diffuse;
+    vec3 diffuse = light.diffuse * max(dot(n, l), 0.0) * albedo;
 
     // Specular: the highlight, seen where light bounces off the surface towards the camera.
     float spec;
@@ -56,7 +67,7 @@ void main() {
         spec = pow(max(dot(v, r), 0.0), material.shininess);
     }
 
-    vec3 specular = light.specular * spec * material.specular;
+    vec3 specular = light.specular * spec * specColor;
 
     // Remove terms from this sum to see what each one contributes.
     color = vec4(ambient + diffuse + specular, 1.0);

@@ -9,10 +9,10 @@ A game engine written in C++ as a learning project: the goal is to understand ho
 - **OpenGL 4.6 core** rendering on a GLFW window, with vsync and resize/minimize handling.
 - **Shaders** loaded from files, compiled and linked, with error reporting and typed uniform setters.
 - **Meshes** that own their GPU buffers (VAO/VBO/EBO), with procedural cube and UV sphere generation.
-- **Textures** loaded with stb_image (PNG/JPG), mipmapped, with multiple texture units.
+- **Textures** loaded with stb_image (PNG/JPG), mipmapped and bound to multiple texture units.
 - **3D transforms**: model/view/projection matrices, perspective projection, depth testing.
 - **Fly camera**: mouse look, WASD movement, zoom, frame-rate independent speed.
-- **Lighting**: Blinn-Phong (toggle to classic Phong) with a point light and per-object materials (ambient, diffuse, specular, shininess).
+- **Lighting**: Blinn-Phong with a point light and per-object materials: diffuse/specular colors and shininess, with optional lighting maps (diffuse + specular textures) for per-pixel materials.
 
 ## Controls
 
