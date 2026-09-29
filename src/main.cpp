@@ -2,6 +2,7 @@
 #include <GLFW/glfw3.h>
 
 #include "camera.h"
+#include "light.h"
 #include "mesh.h"
 #include "shader.h"
 #include "texture.h"
@@ -13,7 +14,7 @@
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 
-#include <algorithm>
+#include <string>
 #include <cmath>
 #include <cstdio>
 
@@ -37,32 +38,14 @@ static Material rubber(glm::vec3 color) {
     return {nullptr, nullptr, color, glm::vec3(0.1f), 8.0f};
 }
 
-enum LightType { Directional = 0, Point = 1, Spot = 2 };
-
-struct Light {
-    int type = Point;
-    glm::vec3 direction{-0.2f, -1.0f, -0.3f}; // directional: sun from above, slightly angled
-    glm::vec3 ambient{0.1f};                  // 0 = faces turned away from the light go pitch black
-    glm::vec3 diffuse{1.0f};                  // the light's color; try (1, 0.3, 0.3) for a red light
-    glm::vec3 specular{1.0f};                 // 0 = no highlights on anything
-    float constant = 1.0f;                    // attenuation, see kAttenuationPresets
-    float linear = 0.22f;
-    float quadratic = 0.20f;
-    float innerAngle = 12.5f;                 // spot cone, degrees: full brightness inside
-    float outerAngle = 17.5f;                 // degrees: dark outside, soft fade between inner and outer
-};
-
-// Attenuation factors that make a light reach about `range` units, from the widely used Ogre3D table.
-struct AttenuationPreset {
-    const char* name;
-    float linear;
-    float quadratic;
-};
-
-static const AttenuationPreset kAttenuationPresets[] = {
-    {"7", 0.7f, 1.8f}, {"13", 0.35f, 0.44f}, {"20", 0.22f, 0.20f},
-    {"32", 0.14f, 0.07f}, {"50", 0.09f, 0.032f}, {"100", 0.045f, 0.0075f},
-};
+static PointLight coloredLight(glm::vec3 position, glm::vec3 color) {
+    PointLight light;
+    light.position = position;
+    light.ambient = color * 0.02f;
+    light.diffuse = color;
+    light.specular = color;
+    return light;
+}
 
 int main() {
     glfwSetErrorCallback([](int code, const char* desc) {
@@ -102,9 +85,20 @@ int main() {
         Shader lit(SHADER_DIR "lit.vert", SHADER_DIR "lit.frag");
         Shader lamp(SHADER_DIR "lit.vert", SHADER_DIR "light.frag");
 
-        Light light;
-        bool blinn = true;      // false = classic Phong, to compare the highlights
-        bool orbitLight = true; // point light: false = stays still at its starting position
+        DirLight sun;
+        sun.diffuse = {0.3f, 0.28f, 0.25f}; // dim and slightly warm, so the point lights stand out
+
+        PointLight points[kMaxPointLights] = {
+            coloredLight({ 2.0f, 1.0f,  1.5f}, {1.0f, 0.2f, 0.2f}),
+            coloredLight({-2.0f, 1.0f,  1.5f}, {0.2f, 1.0f, 0.2f}),
+            coloredLight({-1.5f, 1.2f, -2.0f}, {0.2f, 0.3f, 1.0f}),
+            coloredLight({ 2.0f, 1.5f, -2.0f}, {1.0f, 1.0f, 1.0f}),
+        };
+
+        SpotLight flashlight; // follows the camera, off by default
+
+        bool blinn = true;
+        bool orbitLights = true; // rotates the point lights around the scene's vertical axis
 
         bool wireframe = false;
         bool showDemo = false; // ImGui demo window
@@ -290,50 +284,32 @@ int main() {
             ImGui::Text("%.1f FPS (%.2f ms)", io.Framerate, 1000.0f / io.Framerate);
             ImGui::TextDisabled("Tab: toggle camera / UI mode");
 
-            ImGui::SeparatorText("Light");
-            ImGui::Combo("Type", &light.type, "Directional\0Point\0Spot (flashlight)\0");
-            ImGui::ColorEdit3("Ambient", glm::value_ptr(light.ambient));
-            ImGui::ColorEdit3("Diffuse", glm::value_ptr(light.diffuse));
-            ImGui::ColorEdit3("Specular", glm::value_ptr(light.specular));
-
-            if (light.type == Directional)
-                ImGui::DragFloat3("Direction", glm::value_ptr(light.direction), 0.01f, -1.0f, 1.0f);
-
-            if (light.type == Point || light.type == Spot) {
-                // Range presets fill linear/quadratic; the drags below fine-tune them.
-                const char* current = "custom";
-
-                for (const AttenuationPreset& p : kAttenuationPresets) {
-                    if (p.linear == light.linear && p.quadratic == light.quadratic)
-                        current = p.name;
-                }
-
-                if (ImGui::BeginCombo("Range", current)) {
-                    for (const AttenuationPreset& p : kAttenuationPresets) {
-                        if (ImGui::Selectable(p.name, p.name == current)) {
-                            light.linear = p.linear;
-                            light.quadratic = p.quadratic;
-                        }
-                    }
-
-                    ImGui::EndCombo();
-                }
-
-                ImGui::DragFloat("Linear", &light.linear, 0.001f, 0.0f, 2.0f, "%.4f");
-                ImGui::DragFloat("Quadratic", &light.quadratic, 0.001f, 0.0f, 2.0f, "%.4f");
-            }
-
-            if (light.type == Spot) {
-                ImGui::SliderFloat("Inner angle", &light.innerAngle, 1.0f, 60.0f, "%.1f deg");
-                // Outer can't be smaller than inner: the fade would divide by a negative width and invert the cone.
-                ImGui::SliderFloat("Outer angle", &light.outerAngle, light.innerAngle, 60.0f, "%.1f deg");
-                light.outerAngle = std::max(light.outerAngle, light.innerAngle);
-            }
-
-            if (light.type == Point)
-                ImGui::Checkbox("Orbit", &orbitLight);
-
+            ImGui::SeparatorText("Lights");
             ImGui::Checkbox("Blinn-Phong", &blinn);
+            ImGui::Checkbox("Orbit point lights", &orbitLights);
+
+            // Every light has widgets with the same labels; PushID keeps their IDs apart.
+            if (ImGui::CollapsingHeader("Sun")) {
+                ImGui::PushID("sun");
+                lightUI(sun);
+                ImGui::PopID();
+            }
+
+            for (int i = 0; i < kMaxPointLights; i++) {
+                const std::string label = "Point " + std::to_string(i + 1);
+
+                if (ImGui::CollapsingHeader(label.c_str())) {
+                    ImGui::PushID(i);
+                    lightUI(points[i]);
+                    ImGui::PopID();
+                }
+            }
+
+            if (ImGui::CollapsingHeader("Flashlight")) {
+                ImGui::PushID("flashlight");
+                lightUI(flashlight);
+                ImGui::PopID();
+            }
 
             ImGui::SeparatorText("Render");
             ImGui::Checkbox("Wireframe", &wireframe);
@@ -355,39 +331,24 @@ int main() {
             const glm::mat4 projection = glm::perspective(glm::radians(camera.fov), static_cast<float>(width) / height, 0.1f, 100.0f);
             const glm::mat4 view = camera.view();
 
-            // Where the light is and where it points, for the types that need it.
-            // Point: circles the scene (radius 2, 1.5 above the floor), so shading changes without moving the camera.
-            // Spot: a flashlight in the camera, pointing where you look.
-            glm::vec3 lightPos(0.0f);
-            glm::vec3 lightDir = light.direction;
+            // The panel edits base positions; orbiting rotates copies of them around the Y axis.
+            PointLight worldPoints[kMaxPointLights];
+            const glm::mat4 orbit = glm::rotate(glm::mat4(1.0f), orbitLights ? static_cast<float>(now) * 0.5f : 0.0f, Camera::worldUp);
 
-            if (light.type == Point) {
-                const float angle = orbitLight ? static_cast<float>(now) : 0.0f;
-                lightPos = glm::vec3(2.0f * std::cos(angle), 1.5f, 2.0f * std::sin(angle));
-            } else if (light.type == Spot) {
-                lightPos = camera.position;
-                lightDir = camera.front();
+            for (int i = 0; i < kMaxPointLights; i++) {
+                worldPoints[i] = points[i];
+                worldPoints[i].position = glm::vec3(orbit * glm::vec4(points[i].position, 1.0f));
             }
+
+            flashlight.position = camera.position;
+            flashlight.direction = camera.front();
 
             lit.use();
             lit.setMat4("projection", projection);
             lit.setMat4("view", view);
-            lit.setVec3("viewPos", camera.position); // specular depends on where the viewer is
+            lit.setVec3("viewPos", camera.position);
             lit.setBool("blinn", blinn);
-
-            // Sent every frame since the panel can change them. Struct fields are separate uniforms, "struct.field".
-            lit.setInt("light.type", light.type);
-            lit.setVec3("light.position", lightPos);
-            lit.setVec3("light.direction", lightDir);
-            lit.setVec3("light.ambient", light.ambient);
-            lit.setVec3("light.diffuse", light.diffuse);
-            lit.setVec3("light.specular", light.specular);
-            lit.setFloat("light.constant", light.constant);
-            lit.setFloat("light.linear", light.linear);
-            lit.setFloat("light.quadratic", light.quadratic);
-            // The shader compares cosines (cheaper than angles per pixel), so convert once here.
-            lit.setFloat("light.cutOff", std::cos(glm::radians(light.innerAngle)));
-            lit.setFloat("light.outerCutOff", std::cos(glm::radians(light.outerAngle)));
+            setLights(lit, sun, worldPoints, flashlight);
 
             for (const Object& obj : objects) {
                 // Right to left: scale, then rotate around the object's center, then move it into place.
@@ -412,18 +373,17 @@ int main() {
                 obj.mesh->draw();
             }
 
-            // The lamp: a small sphere where a point light is, so you can see where the light comes from.
-            // A directional light has no position, and a spot sits inside the camera, so neither gets one.
-            if (light.type == Point) {
-                glm::mat4 lampModel = glm::translate(glm::mat4(1.0f), lightPos);
-                lampModel = glm::scale(lampModel, glm::vec3(0.2f));
+            // A small sphere per enabled point light, in its color.
+            lamp.use();
+            lamp.setMat4("projection", projection);
+            lamp.setMat4("view", view);
 
-                lamp.use();
-                lamp.setMat4("projection", projection);
-                lamp.setMat4("view", view);
-                lamp.setMat4("model", lampModel);
-                lamp.setVec3("lightColor", light.diffuse); // the lamp shows the light's main color
+            for (const PointLight& p : worldPoints) {
+                if (!p.enabled)
+                    continue;
 
+                lamp.setMat4("model", glm::scale(glm::translate(glm::mat4(1.0f), p.position), glm::vec3(0.15f)));
+                lamp.setVec3("lightColor", p.diffuse);
                 sphere.draw();
             }
 
