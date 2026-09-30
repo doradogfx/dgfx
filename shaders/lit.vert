@@ -9,6 +9,7 @@ layout(location = 2) in vec2 uv;
 out vec3 vPos;
 out vec3 vNormal;
 out vec2 vUV;
+out vec4 vLightSpacePos; // position as the sun's shadow map sees it
 
 // Each matrix moves the vertex into the next space. Applied right to left, so model goes first.
 uniform mat4 model;      // object -> world: where this object is placed
@@ -18,10 +19,13 @@ uniform mat4 projection; // camera -> clip space: perspective, far things get sm
 // Rotates normals into world space. Computed on the CPU as transpose(inverse(model))
 uniform mat3 normalMatrix;
 
+uniform mat4 lightSpace; // world -> the sun's clip space, for shadow lookups
+
 void main() {
     vec4 worldPos = model * vec4(pos, 1.0);
     gl_Position = projection * view * worldPos;
     vPos = vec3(worldPos);
     vNormal = normalMatrix * normal;
     vUV = uv;
+    vLightSpacePos = lightSpace * worldPos;
 }

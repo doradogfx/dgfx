@@ -62,6 +62,7 @@ add_executable(dgfx
     src/mesh.cpp
     src/renderer.cpp
     src/scene.cpp
+    src/shadowmap.cpp
     src/shader.cpp
     src/texture.cpp
     src/ui.cpp)

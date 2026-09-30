@@ -166,6 +166,31 @@ void debugPanel(GLFWwindow* window, Scene& scene, Renderer& renderer) {
         ImGui::PopID();
     }
 
+    ImGui::SeparatorText("Shadows (sun)");
+    ImGui::Checkbox("Enabled##shadows", &renderer.shadows);
+
+    const int resolutions[] = {1024, 2048, 4096};
+    const std::string current = std::to_string(renderer.shadowResolution);
+
+    if (ImGui::BeginCombo("Resolution##shadows", current.c_str())) {
+        for (int r : resolutions) {
+            if (ImGui::Selectable(std::to_string(r).c_str(), r == renderer.shadowResolution))
+                renderer.shadowResolution = r;
+        }
+
+        ImGui::EndCombo();
+    }
+
+    ImGui::SliderFloat("Bias min", &renderer.shadowBiasMin, 0.0f, 0.01f, "%.4f");
+    ImGui::SliderFloat("Bias max", &renderer.shadowBiasMax, 0.0f, 0.05f, "%.4f");
+    ImGui::Checkbox("PCF (soft edges)", &renderer.pcf);
+
+    if (ImGui::TreeNode("Shadow map")) {
+        // GL textures start at the bottom row, ImGui images at the top, so flip V.
+        ImGui::Image(static_cast<ImTextureID>(renderer.shadowMapTexture()), ImVec2(200.0f, 200.0f), ImVec2(0.0f, 1.0f), ImVec2(1.0f, 0.0f));
+        ImGui::TreePop();
+    }
+
     ImGui::SeparatorText("Display");
     displaySettings(window);
 

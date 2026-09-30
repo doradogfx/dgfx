@@ -38,7 +38,8 @@ Scene::Scene()
           coloredLight({ 2.0f, 1.5f, -2.0f}, {1.0f, 1.0f, 1.0f}),
       } {
     sun.ambient = glm::vec3(0.01f);
-    sun.diffuse = srgb({0.3f, 0.28f, 0.25f}); // dim and slightly warm, so the point lights stand out
+    sun.direction = {-0.6f, -1.0f, -0.4f}; // angled, so shadows are long enough to see
+    sun.diffuse = srgb({0.45f, 0.42f, 0.38f}); // slightly warm, still dim enough for the point lights to stand out
 
     // Gold, from the classic OpenGL material tables (devernay.free.fr/cours/opengl/materials.html).
     // Unlike plastic, a metal's highlight takes the metal's own color.

@@ -6,7 +6,9 @@ Renderer::Renderer(int width, int height)
     : lit(SHADER_DIR "lit.vert", SHADER_DIR "lit.frag"),
       lamp(SHADER_DIR "lit.vert", SHADER_DIR "light.frag"),
       post(SHADER_DIR "post.vert", SHADER_DIR "post.frag"),
-      sceneTarget(width, height) {
+      depth(SHADER_DIR "shadow.vert", SHADER_DIR "shadow.frag"),
+      sceneTarget(width, height),
+      shadowMap(shadowResolution) {
     // The post pass's full-screen triangle comes from gl_VertexID alone, but core profile still requires
     // a VAO to be bound for any draw, so an empty one.
     glGenVertexArrays(1, &emptyVao);
@@ -16,8 +18,46 @@ Renderer::~Renderer() {
     glDeleteVertexArrays(1, &emptyVao);
 }
 
+// Right to left: scale, then rotate around the object's center, then move it into place.
+static glm::mat4 modelMatrix(const Object& obj) {
+    glm::mat4 model = glm::translate(glm::mat4(1.0f), obj.position);
+    model = glm::rotate(model, glm::radians(obj.yaw), glm::vec3(0.0f, 1.0f, 0.0f));
+    return glm::scale(model, obj.scale);
+}
+
+// The sun as a camera: an orthographic box (parallel rays, no perspective) around the scene, looking along
+// the sun's direction. Fixed around the origin and sized for the 10x10 floor.
+static glm::mat4 sunLightSpace(const DirLight& sun) {
+    const glm::vec3 dir = glm::normalize(sun.direction);
+    // lookAt can't build a view when "up" is parallel to the view direction, i.e. a sun straight overhead.
+    const glm::vec3 up = std::abs(dir.y) > 0.99f ? glm::vec3(0.0f, 0.0f, 1.0f) : Camera::worldUp;
+    const glm::mat4 view = glm::lookAt(-dir * 10.0f, glm::vec3(0.0f), up);
+    const glm::mat4 projection = glm::ortho(-8.0f, 8.0f, -8.0f, 8.0f, 0.1f, 20.0f);
+    return projection * view;
+}
+
 void Renderer::render(Scene& scene, const Camera& camera, int width, int height, float time) {
-    // Scene pass, into the off-screen target.
+    const glm::mat4 lightSpace = sunLightSpace(scene.sun);
+    const bool castShadows = shadows && scene.sun.enabled;
+
+    // Shadow pass: the scene's depth as the sun sees it. Lamps don't cast shadows.
+    if (castShadows) {
+        shadowMap.resize(shadowResolution);
+        shadowMap.bind();
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        glEnable(GL_DEPTH_TEST);
+        glClear(GL_DEPTH_BUFFER_BIT);
+
+        depth.use();
+        depth.setMat4("lightSpace", lightSpace);
+
+        for (const Object& obj : scene.objects) {
+            depth.setMat4("model", modelMatrix(obj));
+            obj.mesh->draw();
+        }
+    }
+
+    // Scene pass: into the off-screen target.
     sceneTarget.resize(width, height);
     sceneTarget.bind();
     glPolygonMode(GL_FRONT_AND_BACK, wireframe ? GL_LINE : GL_FILL);
@@ -52,11 +92,15 @@ void Renderer::render(Scene& scene, const Camera& camera, int width, int height,
     lit.setBool("blinn", blinn);
     setLights(lit, scene.sun, worldPoints, scene.flashlight);
 
+    lit.setMat4("lightSpace", lightSpace);
+    lit.setBool("shadowsEnabled", castShadows);
+    lit.setFloat("shadowBiasMin", shadowBiasMin);
+    lit.setFloat("shadowBiasMax", shadowBiasMax);
+    lit.setBool("pcf", pcf);
+    shadowMap.bindDepth(2);
+
     for (const Object& obj : scene.objects) {
-        // Right to left: scale, then rotate around the object's center, then move it into place.
-        glm::mat4 model = glm::translate(glm::mat4(1.0f), obj.position);
-        model = glm::rotate(model, glm::radians(obj.yaw), glm::vec3(0.0f, 1.0f, 0.0f));
-        model = glm::scale(model, obj.scale);
+        const glm::mat4 model = modelMatrix(obj);
 
         // Normals can't just use the model matrix: a non-uniform scale (like the flattened floor) would
         // tilt them so they no longer point straight out of the surface. The inverse transpose undoes the

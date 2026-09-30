@@ -3,6 +3,7 @@
 in vec3 vPos;
 in vec3 vNormal;
 in vec2 vUV;
+in vec4 vLightSpacePos;
 
 out vec4 color;
 
@@ -17,6 +18,12 @@ struct Material {
 // Outside the struct: layout(binding) isn't allowed on struct members.
 layout(binding = 0) uniform sampler2D diffuseMap;
 layout(binding = 1) uniform sampler2D specularMap;
+layout(binding = 2) uniform sampler2D shadowMap; // the sun's depth, rendered from its point of view
+
+uniform bool shadowsEnabled;
+uniform float shadowBiasMin;
+uniform float shadowBiasMax;
+uniform bool pcf;
 
 #define MAX_POINT_LIGHTS 4 // must match kMaxPointLights in light.h
 
@@ -91,10 +98,42 @@ float attenuation(vec3 lightPos, float constant, float linear, float quadratic) 
     return 1.0 / (constant + linear * d + quadratic * d * d);
 }
 
+// How much this pixel is hidden from the sun: 0 = lit, 1 = fully in shadow.
+float sunShadow(vec3 l) {
+    // Clip space -> [0,1]: xy is where to look in the shadow map, z is this pixel's depth as the sun sees it.
+    vec3 p = vLightSpacePos.xyz / vLightSpacePos.w * 0.5 + 0.5;
+
+    if (p.z > 1.0)
+        return 0.0; // beyond the light box's far plane
+
+    // Each shadow-map texel covers a patch of surface; on a slope, part of that patch is "behind" the stored
+    // depth and shadows itself (striped "shadow acne"). Bias pushes the comparison back, more for surfaces
+    // at a grazing angle to the light. Too much and shadows detach from their objects ("peter-panning").
+    float bias = max(shadowBiasMax * (1.0 - dot(n, l)), shadowBiasMin);
+
+    if (!pcf)
+        return p.z - bias > texture(shadowMap, p.xy).r ? 1.0 : 0.0;
+
+    // Percentage-closer filtering: the fraction of the 3x3 neighboring texels that block the light,
+    // which turns the hard staircase edge into a soft one.
+    vec2 texel = 1.0 / vec2(textureSize(shadowMap, 0));
+    float shadow = 0.0;
+
+    for (int y = -1; y <= 1; y++) {
+        for (int x = -1; x <= 1; x++) {
+            float closest = texture(shadowMap, p.xy + vec2(x, y) * texel).r;
+            shadow += p.z - bias > closest ? 1.0 : 0.0;
+        }
+    }
+
+    return shadow / 9.0;
+}
+
 vec3 calcDirLight(DirLight light) {
     // Parallel rays: the same direction for every pixel. The light points at the scene, we need the way back.
     vec3 l = normalize(-light.direction);
-    return light.ambient * albedo + shade(l, light.diffuse, light.specular);
+    float shadow = shadowsEnabled ? sunShadow(l) : 0.0;
+    return light.ambient * albedo + (1.0 - shadow) * shade(l, light.diffuse, light.specular);
 }
 
 vec3 calcPointLight(PointLight light) {
