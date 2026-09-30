@@ -40,6 +40,8 @@ public:
     Renderer& operator=(const Renderer&) = delete;
 
 private:
+    void drawLit(const Scene& scene, const Mesh& mesh, const Material& material, const glm::mat4& model);
+
     Shader lit;
     Shader lamp;
     Shader post;

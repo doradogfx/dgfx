@@ -2,23 +2,14 @@
 
 #include "cubemap.h"
 #include "light.h"
+#include "material.h"
 #include "mesh.h"
+#include "model.h"
 #include "texture.h"
 
 #include <glm/glm.hpp>
 
 #include <vector>
-
-struct Material {
-    const Texture* diffuseMap;
-    const Texture* specularMap;
-    glm::vec3 diffuse;
-    glm::vec3 specular;
-    float shininess;
-    float reflectivity = 0.0f; // 0 = none, 1 = perfect mirror of the sky
-    float refractivity = 0.0f; // 0 = opaque, 1 = see-through glass
-    float ior = 1.52f;         // index of refraction: air 1.0, water 1.33, glass ~1.52
-};
 
 struct Object {
     const Mesh* mesh;
@@ -26,6 +17,14 @@ struct Object {
     float yaw; // degrees around Y
     glm::vec3 scale;
     Material material;
+};
+
+// A loaded model placed in the world. Each part keeps its own material from the file.
+struct ModelInstance {
+    const Model* model;
+    glm::vec3 position; // where the model's base (bottom center) rests
+    float yaw;          // degrees around Y
+    float scale;        // uniform, see Model::fitScale
 };
 
 // Everything in the world: the resources objects use, the objects, and the lights.
@@ -41,7 +40,11 @@ struct Scene {
 
     Cubemap sky;
 
+    TextureCache textures; // declared before the models, so it outlives them
+    Model shiba;
+
     std::vector<Object> objects;
+    std::vector<ModelInstance> models;
 
     DirLight sun;
     PointLight points[kMaxPointLights];

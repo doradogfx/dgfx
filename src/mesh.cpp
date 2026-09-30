@@ -3,6 +3,7 @@
 #include <cmath>
 #include <cstddef>
 #include <numbers>
+#include <utility>
 
 Mesh::Mesh(const std::vector<Vertex>& vertices, const std::vector<unsigned int>& indices)
     : indexCount(static_cast<GLsizei>(indices.size())) {
@@ -36,6 +37,13 @@ Mesh::~Mesh() {
     glDeleteBuffers(1, &ebo);
     glDeleteBuffers(1, &vbo);
     glDeleteVertexArrays(1, &vao);
+}
+
+Mesh::Mesh(Mesh&& other) noexcept
+    : vao(std::exchange(other.vao, 0)),
+      vbo(std::exchange(other.vbo, 0)),
+      ebo(std::exchange(other.ebo, 0)),
+      indexCount(std::exchange(other.indexCount, 0)) {
 }
 
 void Mesh::draw() const {

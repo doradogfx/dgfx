@@ -29,6 +29,14 @@ static glm::mat4 modelMatrix(const Object& obj) {
     return glm::scale(model, obj.scale);
 }
 
+// Same, but first moves the model's base (bottom center) to the origin, so `position` is where it rests.
+static glm::mat4 modelMatrix(const ModelInstance& instance) {
+    glm::mat4 model = glm::translate(glm::mat4(1.0f), instance.position);
+    model = glm::rotate(model, glm::radians(instance.yaw), glm::vec3(0.0f, 1.0f, 0.0f));
+    model = glm::scale(model, glm::vec3(instance.scale));
+    return glm::translate(model, -instance.model->base());
+}
+
 // The sun as a camera: an orthographic box (parallel rays, no perspective) around the scene, looking along
 // the sun's direction. Fixed around the origin and sized for the 10x10 floor.
 static glm::mat4 sunLightSpace(const DirLight& sun) {
@@ -51,6 +59,29 @@ static void setCulling(bool enabled, GLenum face) {
     glCullFace(face);
 }
 
+// One mesh with the lit shader, which must already be in use with the per-frame uniforms set.
+void Renderer::drawLit(const Scene& scene, const Mesh& mesh, const Material& material, const glm::mat4& model) {
+    // Normals can't just use the model matrix: a non-uniform scale (like the flattened floor) would
+    // tilt them so they no longer point straight out of the surface. The inverse transpose undoes the
+    // scale's effect on direction while keeping rotation. mat3 drops translation, directions don't move.
+    const glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(model)));
+
+    lit.setMat4("model", model);
+    lit.setMat3("normalMatrix", normalMatrix);
+    // Maps go to the units the shader's samplers read (layout binding 0 and 1).
+    (material.diffuseMap ? material.diffuseMap : &scene.white)->bind(0);
+    (material.specularMap ? material.specularMap : &scene.white)->bind(1);
+    lit.setVec3("material.diffuse", material.diffuse);
+    lit.setVec3("material.specular", material.specular);
+    lit.setFloat("material.shininess", material.shininess);
+    lit.setFloat("material.reflectivity", material.reflectivity);
+    lit.setFloat("material.refractivity", material.refractivity);
+    lit.setFloat("material.ior", material.ior);
+
+    setCulling(faceCulling && !material.doubleSided, GL_BACK);
+    mesh.draw();
+}
+
 void Renderer::render(Scene& scene, const Camera& camera, int width, int height, float time) {
     const glm::mat4 lightSpace = sunLightSpace(scene.sun);
     const bool castShadows = shadows && scene.sun.enabled;
@@ -70,6 +101,16 @@ void Renderer::render(Scene& scene, const Camera& camera, int width, int height,
         for (const Object& obj : scene.objects) {
             depth.setMat4("model", modelMatrix(obj));
             obj.mesh->draw();
+        }
+
+        for (const ModelInstance& instance : scene.models) {
+            depth.setMat4("model", modelMatrix(instance));
+
+            for (const Model::Part& part : instance.model->parts) {
+                // Thin double-sided surfaces must cast shadows whichever side faces the sun.
+                setCulling((faceCulling || shadowCullFront) && !part.material.doubleSided, shadowCullFront ? GL_FRONT : GL_BACK);
+                part.mesh.draw();
+            }
         }
     }
 
@@ -120,28 +161,17 @@ void Renderer::render(Scene& scene, const Camera& camera, int width, int height,
     lit.setBool("fresnel", fresnel);
     scene.sky.bind(3);
 
-    for (const Object& obj : scene.objects) {
-        const glm::mat4 model = modelMatrix(obj);
+    for (const Object& obj : scene.objects)
+        drawLit(scene, *obj.mesh, obj.material, modelMatrix(obj));
 
-        // Normals can't just use the model matrix: a non-uniform scale (like the flattened floor) would
-        // tilt them so they no longer point straight out of the surface. The inverse transpose undoes the
-        // scale's effect on direction while keeping rotation. mat3 drops translation, directions don't move.
-        const glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(model)));
+    for (const ModelInstance& instance : scene.models) {
+        const glm::mat4 model = modelMatrix(instance);
 
-        lit.setMat4("model", model);
-        lit.setMat3("normalMatrix", normalMatrix);
-        // Maps go to the units the shader's samplers read (layout binding 0 and 1).
-        (obj.material.diffuseMap ? obj.material.diffuseMap : &scene.white)->bind(0);
-        (obj.material.specularMap ? obj.material.specularMap : &scene.white)->bind(1);
-        lit.setVec3("material.diffuse", obj.material.diffuse);
-        lit.setVec3("material.specular", obj.material.specular);
-        lit.setFloat("material.shininess", obj.material.shininess);
-        lit.setFloat("material.reflectivity", obj.material.reflectivity);
-        lit.setFloat("material.refractivity", obj.material.refractivity);
-        lit.setFloat("material.ior", obj.material.ior);
-
-        obj.mesh->draw();
+        for (const Model::Part& part : instance.model->parts)
+            drawLit(scene, part.mesh, part.material, model);
     }
+
+    setCulling(faceCulling, GL_BACK);
 
     // A small sphere per enabled point light, in its color.
     lamp.use();

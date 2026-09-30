@@ -50,6 +50,22 @@ add_library(imgui STATIC
 target_include_directories(imgui PUBLIC ${imgui_SOURCE_DIR} ${imgui_SOURCE_DIR}/backends)
 target_link_libraries(imgui PUBLIC glfw)
 
+# Assimp: 3D model importer. Only the glTF and OBJ importers, to keep the (large) build smaller.
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_ASSIMP_TOOLS OFF CACHE BOOL "" FORCE)
+set(ASSIMP_INSTALL OFF CACHE BOOL "" FORCE)
+set(ASSIMP_NO_EXPORT ON CACHE BOOL "" FORCE)
+set(ASSIMP_WARNINGS_AS_ERRORS OFF CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_ALL_IMPORTERS_BY_DEFAULT OFF CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_GLTF_IMPORTER ON CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_OBJ_IMPORTER ON CACHE BOOL "" FORCE)
+FetchContent_Declare(assimp
+    GIT_REPOSITORY https://github.com/assimp/assimp.git
+    GIT_TAG v6.0.5
+    GIT_SHALLOW TRUE)
+FetchContent_MakeAvailable(assimp)
+
 # GLAD: OpenGL 4.6 core function loader, pre-generated and vendored in external/glad.
 add_library(glad STATIC external/glad/src/glad.c)
 target_include_directories(glad PUBLIC external/glad/include)
@@ -61,17 +77,19 @@ add_executable(dgfx
     src/light.cpp
     src/main.cpp
     src/mesh.cpp
+    src/model.cpp
     src/renderer.cpp
     src/scene.cpp
     src/shadowmap.cpp
     src/shader.cpp
     src/texture.cpp
     src/ui.cpp)
-target_link_libraries(dgfx PRIVATE glfw glad glm::glm imgui)
+target_link_libraries(dgfx PRIVATE glfw glad glm::glm imgui assimp::assimp)
 target_include_directories(dgfx PRIVATE ${stb_SOURCE_DIR})
 
-# Shaders and textures are loaded from the source tree, so the exe finds them regardless of its working directory.
+# Shaders, textures and models are loaded from the source tree, so the exe finds them regardless of its working directory.
 # ponytail: absolute source path, copy them next to the exe if it ever ships without the repo.
 target_compile_definitions(dgfx PRIVATE
     SHADER_DIR="${CMAKE_SOURCE_DIR}/shaders/"
-    TEXTURE_DIR="${CMAKE_SOURCE_DIR}/textures/")
+    TEXTURE_DIR="${CMAKE_SOURCE_DIR}/textures/"
+    MODEL_DIR="${CMAKE_SOURCE_DIR}/models/")

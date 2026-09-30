@@ -22,6 +22,10 @@ public:
     Mesh(const Mesh&) = delete;
     Mesh& operator=(const Mesh&) = delete;
 
+    // Moving hands the GL objects over and leaves the source empty, so only one Mesh ever deletes them.
+    // Needed to keep meshes in a std::vector, which moves its elements when it grows.
+    Mesh(Mesh&& other) noexcept;
+
 private:
     GLuint vao = 0;
     GLuint vbo = 0;

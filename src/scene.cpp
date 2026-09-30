@@ -32,6 +32,7 @@ Scene::Scene()
       crateDiffuse(TEXTURE_DIR "container2.png", true),
       crateSpecular(TEXTURE_DIR "container2_specular.png", false),
       sky(TEXTURE_DIR "skybox/"),
+      shiba(MODEL_DIR "shiba/scene.gltf", textures),
       points{
           coloredLight({ 2.0f, 1.0f,  1.5f}, {1.0f, 0.2f, 0.2f}),
           coloredLight({-2.0f, 1.0f,  1.5f}, {0.2f, 1.0f, 0.2f}),
@@ -67,5 +68,10 @@ Scene::Scene()
         {&cube,   {-3.2f,  0.0f,   0.6f}, 10.0f, { 1.0f, 1.0f,  1.0f}, crate},                                 // crate, left
         {&sphere, { 3.3f,  0.0f,   0.8f},  0.0f, { 1.0f, 1.0f,  1.0f}, chrome},                                // chrome
         {&sphere, {-0.4f,  0.0f,  -2.4f},  0.0f, { 1.0f, 1.0f,  1.0f}, glass},                                 // glass
+    };
+
+    // "Shiba" by zixisun02, CC-BY-4.0 (see models/shiba/license.txt).
+    models = {
+        {&shiba, {3.6f, -0.5f, -1.6f}, -30.0f, shiba.fitScale(1.2f)},
     };
 }

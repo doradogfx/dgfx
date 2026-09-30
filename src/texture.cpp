@@ -57,3 +57,12 @@ void Texture::bind(GLuint unit) const {
     glActiveTexture(GL_TEXTURE0 + unit);
     glBindTexture(GL_TEXTURE_2D, id);
 }
+
+const Texture& TextureCache::get(const std::string& path, bool srgb) {
+    auto it = textures.find(path);
+
+    if (it == textures.end())
+        it = textures.emplace(path, std::make_unique<Texture>(path.c_str(), srgb)).first;
+
+    return *it->second;
+}
