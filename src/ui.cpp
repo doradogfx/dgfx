@@ -201,6 +201,7 @@ void debugPanel(GLFWwindow* window, Scene& scene, Renderer& renderer) {
     ImGui::SeparatorText("Render");
     ImGui::Checkbox("Wireframe", &renderer.wireframe);
     ImGui::Checkbox("Face culling", &renderer.faceCulling);
+    ImGui::Checkbox("Skybox", &renderer.showSkybox);
     ImGui::Checkbox("ImGui demo", &showDemo);
 
     ImGui::SeparatorText("Post");

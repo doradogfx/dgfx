@@ -13,6 +13,7 @@ public:
     bool blinn = true;
     bool wireframe = false;
     bool faceCulling = true;
+    bool showSkybox = true;
     int postEffect = None;
     float gamma = 1.0f;
 
@@ -41,6 +42,7 @@ private:
     Shader lamp;
     Shader post;
     Shader depth;
+    Shader skybox;
     Framebuffer sceneTarget;
     ShadowMap shadowMap;
     GLuint emptyVao = 0;

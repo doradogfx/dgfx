@@ -31,6 +31,7 @@ Scene::Scene()
       white(glm::vec3(1.0f)),
       crateDiffuse(TEXTURE_DIR "container2.png", true),
       crateSpecular(TEXTURE_DIR "container2_specular.png", false),
+      sky(TEXTURE_DIR "skybox/"),
       points{
           coloredLight({ 2.0f, 1.0f,  1.5f}, {1.0f, 0.2f, 0.2f}),
           coloredLight({-2.0f, 1.0f,  1.5f}, {0.2f, 1.0f, 0.2f}),

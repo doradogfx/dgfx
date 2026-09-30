@@ -7,11 +7,15 @@ Renderer::Renderer(int width, int height)
       lamp(SHADER_DIR "lit.vert", SHADER_DIR "light.frag"),
       post(SHADER_DIR "post.vert", SHADER_DIR "post.frag"),
       depth(SHADER_DIR "shadow.vert", SHADER_DIR "shadow.frag"),
+      skybox(SHADER_DIR "skybox.vert", SHADER_DIR "skybox.frag"),
       sceneTarget(width, height),
       shadowMap(shadowResolution) {
     // The post pass's full-screen triangle comes from gl_VertexID alone, but core profile still requires
     // a VAO to be bound for any draw, so an empty one.
     glGenVertexArrays(1, &emptyVao);
+
+    // Filter across cubemap face edges, otherwise seams show along the sky cube's edges.
+    glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 }
 
 Renderer::~Renderer() {
@@ -144,6 +148,22 @@ void Renderer::render(Scene& scene, const Camera& camera, int width, int height,
         lamp.setMat4("model", glm::scale(glm::translate(glm::mat4(1.0f), p.position), glm::vec3(0.15f)));
         lamp.setVec3("lightColor", p.diffuse);
         scene.sphere.draw();
+    }
+
+    // Sky last: its depth is 1.0, so the depth test skips every pixel an object already covered.
+    // LEQUAL because it has to pass against the cleared depth, which is also 1.0.
+    // Culling off because we're inside the cube, looking at its back faces.
+    if (showSkybox) {
+        glDepthFunc(GL_LEQUAL);
+        glDisable(GL_CULL_FACE);
+
+        skybox.use();
+        skybox.setMat4("projection", projection);
+        skybox.setMat4("view", view);
+        scene.sky.bind(0);
+        scene.cube.draw();
+
+        glDepthFunc(GL_LESS);
     }
 
     // Post pass: the scene texture through the post shader onto the window, one full-screen triangle.

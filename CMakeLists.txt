@@ -55,6 +55,7 @@ add_library(glad STATIC external/glad/src/glad.c)
 target_include_directories(glad PUBLIC external/glad/include)
 
 add_executable(dgfx
+    src/cubemap.cpp
     src/framebuffer.cpp
     src/input.cpp
     src/light.cpp

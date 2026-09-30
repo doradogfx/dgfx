@@ -1,5 +1,6 @@
 #pragma once
 
+#include "cubemap.h"
 #include "light.h"
 #include "mesh.h"
 #include "texture.h"
@@ -34,6 +35,8 @@ struct Scene {
     Texture white; // bound wherever a material has no map
     Texture crateDiffuse;
     Texture crateSpecular;
+
+    Cubemap sky;
 
     std::vector<Object> objects;
 
