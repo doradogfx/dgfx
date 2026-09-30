@@ -81,12 +81,13 @@ int main() {
             }
 
             beginUI();
-            debugPanel(scene, renderer);
+            debugPanel(window, scene, renderer);
 
             renderer.render(scene, camera, width, height, static_cast<float>(now));
             endUI();
 
             glfwSwapBuffers(window);
+            applyDisplayChanges(window);
         }
 
         shutdownUI();

@@ -8,7 +8,104 @@
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 
+#include <algorithm>
 #include <string>
+#include <vector>
+
+static bool vsync = true;
+
+struct Resolution {
+    int width;
+    int height;
+};
+
+static std::vector<Resolution> supportedResolutions(GLFWmonitor* monitor) {
+    int count;
+    const GLFWvidmode* modes = glfwGetVideoModes(monitor, &count);
+    std::vector<Resolution> result;
+
+    for (int i = count - 1; i >= 0; i--) {
+        const Resolution r = {modes[i].width, modes[i].height};
+        const bool seen = std::any_of(result.begin(), result.end(), [&](const Resolution& o) {
+            return o.width == r.width && o.height == r.height;
+        });
+
+        if (!seen)
+            result.push_back(r);
+    }
+
+    return result;
+}
+
+struct DisplayRequest {
+    bool pending = false;
+    bool fullscreen = false;
+    int width = 0;
+    int height = 0;
+};
+
+static DisplayRequest request;
+
+static void displaySettings(GLFWwindow* window) {
+    static const std::vector<Resolution> resolutions = supportedResolutions(glfwGetPrimaryMonitor());
+
+    const bool fullscreen = glfwGetWindowMonitor(window) != nullptr;
+    int width, height;
+    glfwGetWindowSize(window, &width, &height);
+
+    int mode = fullscreen ? 1 : 0;
+
+    if (ImGui::Combo("Mode", &mode, "Windowed\0Fullscreen (borderless)\0"))
+        request = {true, mode == 1, width, height};
+
+    ImGui::BeginDisabled(fullscreen);
+    const std::string current = std::to_string(width) + " x " + std::to_string(height);
+
+    if (ImGui::BeginCombo("Resolution", current.c_str())) {
+        for (const Resolution& r : resolutions) {
+            const std::string label = std::to_string(r.width) + " x " + std::to_string(r.height);
+
+            if (ImGui::Selectable(label.c_str(), r.width == width && r.height == height))
+                request = {true, false, r.width, r.height};
+        }
+
+        ImGui::EndCombo();
+    }
+
+    ImGui::EndDisabled();
+}
+
+void applyDisplayChanges(GLFWwindow* window) {
+    static int windowedX = 100;
+    static int windowedY = 100;
+    static int windowedWidth = 1280;
+    static int windowedHeight = 720;
+
+    if (!request.pending)
+        return;
+
+    request.pending = false;
+    const bool fullscreen = glfwGetWindowMonitor(window) != nullptr;
+
+    if (request.fullscreen && !fullscreen) {
+        glfwGetWindowPos(window, &windowedX, &windowedY);
+        glfwGetWindowSize(window, &windowedWidth, &windowedHeight);
+
+        GLFWmonitor* monitor = glfwGetPrimaryMonitor();
+        const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+        glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
+
+        // Don't minimize when focus moves elsewhere (e.g. a click on another monitor).
+        glfwSetWindowAttrib(window, GLFW_AUTO_ICONIFY, GLFW_FALSE);
+    } else if (!request.fullscreen && fullscreen) {
+        glfwSetWindowMonitor(window, nullptr, windowedX, windowedY, windowedWidth, windowedHeight, 0);
+    } else if (!request.fullscreen) {
+        glfwSetWindowSize(window, request.width, request.height);
+    }
+
+    // Some drivers reset the swap interval when the window changes monitor.
+    glfwSwapInterval(vsync ? 1 : 0);
+}
 
 void initUI(GLFWwindow* window) {
     ImGui::CreateContext();
@@ -33,7 +130,7 @@ void shutdownUI() {
     ImGui::DestroyContext();
 }
 
-void debugPanel(Scene& scene, Renderer& renderer) {
+void debugPanel(GLFWwindow* window, Scene& scene, Renderer& renderer) {
     static bool showDemo = false;
     const ImGuiIO& io = ImGui::GetIO();
 
@@ -69,12 +166,13 @@ void debugPanel(Scene& scene, Renderer& renderer) {
         ImGui::PopID();
     }
 
-    ImGui::SeparatorText("Render");
+    ImGui::SeparatorText("Display");
+    displaySettings(window);
 
-    static bool vsync = true; // matches glfwSwapInterval(1) in main
     if (ImGui::Checkbox("VSync", &vsync))
         glfwSwapInterval(vsync ? 1 : 0);
 
+    ImGui::SeparatorText("Render");
     ImGui::Checkbox("Wireframe", &renderer.wireframe);
     ImGui::Checkbox("ImGui demo", &showDemo);
 
