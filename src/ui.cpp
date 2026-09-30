@@ -135,78 +135,95 @@ void debugPanel(GLFWwindow* window, Scene& scene, Renderer& renderer) {
     const ImGuiIO& io = ImGui::GetIO();
 
     ImGui::SetNextWindowPos(ImVec2(10.0f, 10.0f), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(340.0f, 0.0f), ImGuiCond_FirstUseEver);
     ImGui::Begin("dgfx");
+
+    // Negative width = the panel's width minus this much, which leaves room for labels at any panel size.
+    ImGui::PushItemWidth(-ImGui::GetFontSize() * 8.0f);
+
     ImGui::Text("%.1f FPS (%.2f ms)", io.Framerate, 1000.0f / io.Framerate);
     ImGui::TextDisabled("Tab: toggle camera / UI mode");
 
-    ImGui::SeparatorText("Lights");
-    ImGui::Checkbox("Blinn-Phong", &renderer.blinn);
-    ImGui::Checkbox("Orbit point lights", &scene.orbitLights);
+    // Collapsing headers don't push an ID, so sections that reuse labels ("Enabled", "Resolution") get their
+    // own ID scope. Tree nodes push one themselves.
+    ImGui::PushID("lighting");
+    if (ImGui::CollapsingHeader("Lighting")) {
+        ImGui::Checkbox("Blinn-Phong", &renderer.blinn);
+        ImGui::Checkbox("Orbit point lights", &scene.orbitLights);
 
-    // Every light has widgets with the same labels; PushID keeps their IDs apart.
-    if (ImGui::CollapsingHeader("Sun")) {
-        ImGui::PushID("sun");
-        lightUI(scene.sun);
-        ImGui::PopID();
-    }
-
-    for (int i = 0; i < kMaxPointLights; i++) {
-        const std::string label = "Point " + std::to_string(i + 1);
-
-        if (ImGui::CollapsingHeader(label.c_str())) {
-            ImGui::PushID(i);
-            lightUI(scene.points[i]);
-            ImGui::PopID();
-        }
-    }
-
-    if (ImGui::CollapsingHeader("Flashlight")) {
-        ImGui::PushID("flashlight");
-        lightUI(scene.flashlight);
-        ImGui::PopID();
-    }
-
-    ImGui::SeparatorText("Shadows (sun)");
-    ImGui::Checkbox("Enabled##shadows", &renderer.shadows);
-
-    const int resolutions[] = {1024, 2048, 4096};
-    const std::string current = std::to_string(renderer.shadowResolution);
-
-    if (ImGui::BeginCombo("Resolution##shadows", current.c_str())) {
-        for (int r : resolutions) {
-            if (ImGui::Selectable(std::to_string(r).c_str(), r == renderer.shadowResolution))
-                renderer.shadowResolution = r;
+        if (ImGui::TreeNode("Sun")) {
+            lightUI(scene.sun);
+            ImGui::TreePop();
         }
 
-        ImGui::EndCombo();
+        for (int i = 0; i < kMaxPointLights; i++) {
+            const std::string label = "Point " + std::to_string(i + 1);
+
+            if (ImGui::TreeNode(label.c_str())) {
+                lightUI(scene.points[i]);
+                ImGui::TreePop();
+            }
+        }
+
+        if (ImGui::TreeNode("Flashlight")) {
+            lightUI(scene.flashlight);
+            ImGui::TreePop();
+        }
     }
+    ImGui::PopID();
 
-    ImGui::SliderFloat("Bias min", &renderer.shadowBiasMin, 0.0f, 0.01f, "%.4f");
-    ImGui::SliderFloat("Bias max", &renderer.shadowBiasMax, 0.0f, 0.05f, "%.4f");
-    ImGui::Checkbox("PCF (soft edges)", &renderer.pcf);
-    ImGui::Checkbox("Cull front faces", &renderer.shadowCullFront);
+    ImGui::PushID("shadows");
+    if (ImGui::CollapsingHeader("Shadows")) {
+        ImGui::Checkbox("Enabled", &renderer.shadows);
 
-    if (ImGui::TreeNode("Shadow map")) {
-        // GL textures start at the bottom row, ImGui images at the top, so flip V.
-        ImGui::Image(static_cast<ImTextureID>(renderer.shadowMapTexture()), ImVec2(200.0f, 200.0f), ImVec2(0.0f, 1.0f), ImVec2(1.0f, 0.0f));
-        ImGui::TreePop();
+        const int resolutions[] = {1024, 2048, 4096};
+        const std::string current = std::to_string(renderer.shadowResolution);
+
+        if (ImGui::BeginCombo("Resolution", current.c_str())) {
+            for (int r : resolutions) {
+                if (ImGui::Selectable(std::to_string(r).c_str(), r == renderer.shadowResolution))
+                    renderer.shadowResolution = r;
+            }
+
+            ImGui::EndCombo();
+        }
+
+        ImGui::SliderFloat("Bias min", &renderer.shadowBiasMin, 0.0f, 0.01f, "%.4f");
+        ImGui::SliderFloat("Bias max", &renderer.shadowBiasMax, 0.0f, 0.05f, "%.4f");
+        ImGui::Checkbox("PCF (soft edges)", &renderer.pcf);
+        ImGui::Checkbox("Cull front faces", &renderer.shadowCullFront);
+
+        if (ImGui::TreeNode("Shadow map")) {
+            // GL textures start at the bottom row, ImGui images at the top, so flip V.
+            ImGui::Image(static_cast<ImTextureID>(renderer.shadowMapTexture()), ImVec2(200.0f, 200.0f), ImVec2(0.0f, 1.0f), ImVec2(1.0f, 0.0f));
+            ImGui::TreePop();
+        }
     }
+    ImGui::PopID();
 
-    ImGui::SeparatorText("Display");
-    displaySettings(window);
+    ImGui::PushID("rendering");
+    if (ImGui::CollapsingHeader("Rendering")) {
+        ImGui::Checkbox("Wireframe", &renderer.wireframe);
+        ImGui::Checkbox("Face culling", &renderer.faceCulling);
+        ImGui::Checkbox("Skybox", &renderer.showSkybox);
+        ImGui::Combo("Post effect", &renderer.postEffect, "None\0Grayscale\0Invert\0Blur\0Sharpen\0Edge detection\0");
+        ImGui::SliderFloat("Gamma", &renderer.gamma, 0.5f, 2.0f, "%.2f");
+    }
+    ImGui::PopID();
 
-    if (ImGui::Checkbox("VSync", &vsync))
-        glfwSwapInterval(vsync ? 1 : 0);
+    ImGui::PushID("display");
+    if (ImGui::CollapsingHeader("Display")) {
+        displaySettings(window);
 
-    ImGui::SeparatorText("Render");
-    ImGui::Checkbox("Wireframe", &renderer.wireframe);
-    ImGui::Checkbox("Face culling", &renderer.faceCulling);
-    ImGui::Checkbox("Skybox", &renderer.showSkybox);
-    ImGui::Checkbox("ImGui demo", &showDemo);
+        if (ImGui::Checkbox("VSync", &vsync))
+            glfwSwapInterval(vsync ? 1 : 0);
+    }
+    ImGui::PopID();
 
-    ImGui::SeparatorText("Post");
-    ImGui::Combo("Effect", &renderer.postEffect, "None\0Grayscale\0Invert\0Blur\0Sharpen\0Edge detection\0");
-    ImGui::SliderFloat("Gamma", &renderer.gamma, 0.5f, 2.0f, "%.2f");
+    if (ImGui::CollapsingHeader("Debug"))
+        ImGui::Checkbox("ImGui demo", &showDemo);
+
+    ImGui::PopItemWidth();
     ImGui::End();
 
     if (showDemo)
