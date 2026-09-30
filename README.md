@@ -10,7 +10,7 @@ A game engine written in C++ as a learning project: the goal is to understand ho
 - **Shaders** loaded from files, compiled and linked, with error reporting and typed uniform setters.
 - **Meshes** that own their GPU buffers (VAO/VBO/EBO), with procedural cube and UV sphere generation.
 - **Textures** loaded with stb_image (PNG/JPG), sRGB or linear, mipmapped with anisotropic filtering, bound to multiple texture units.
-- **3D transforms**: model/view/projection matrices, perspective projection, depth testing.
+- **3D transforms**: model/view/projection matrices, perspective projection, depth testing, back-face culling.
 - **Fly camera**: mouse look, WASD movement, zoom, frame-rate independent speed.
 - **Lighting**: Blinn-Phong with multiple lights at once: a directional sun, up to 4 point lights (distance attenuation) and a camera flashlight (spot with soft edges). Per-object materials: diffuse/specular colors and shininess, with optional lighting maps (diffuse + specular textures) for per-pixel materials. Directional shadow mapping for the sun. Gamma-correct: lighting is computed in linear space (sRGB textures and framebuffer).
 - **Post-processing**: the scene renders to an off-screen framebuffer, then a full-screen pass applies effects (grayscale, invert, blur, sharpen, edge detection) and a user gamma adjustment.

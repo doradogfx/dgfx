@@ -36,6 +36,17 @@ static glm::mat4 sunLightSpace(const DirLight& sun) {
     return projection * view;
 }
 
+// Skip triangles facing away (GL_BACK) or towards the camera (GL_FRONT). Front = counter-clockwise on screen.
+static void setCulling(bool enabled, GLenum face) {
+    if (!enabled) {
+        glDisable(GL_CULL_FACE);
+        return;
+    }
+
+    glEnable(GL_CULL_FACE);
+    glCullFace(face);
+}
+
 void Renderer::render(Scene& scene, const Camera& camera, int width, int height, float time) {
     const glm::mat4 lightSpace = sunLightSpace(scene.sun);
     const bool castShadows = shadows && scene.sun.enabled;
@@ -46,6 +57,7 @@ void Renderer::render(Scene& scene, const Camera& camera, int width, int height,
         shadowMap.bind();
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         glEnable(GL_DEPTH_TEST);
+        setCulling(faceCulling || shadowCullFront, shadowCullFront ? GL_FRONT : GL_BACK);
         glClear(GL_DEPTH_BUFFER_BIT);
 
         depth.use();
@@ -62,6 +74,7 @@ void Renderer::render(Scene& scene, const Camera& camera, int width, int height,
     sceneTarget.bind();
     glPolygonMode(GL_FRONT_AND_BACK, wireframe ? GL_LINE : GL_FILL);
     glEnable(GL_DEPTH_TEST);
+    setCulling(faceCulling, GL_BACK);
 
     // The scene is computed in linear space; the GPU encodes to sRGB when writing each pixel (and the clear).
     glEnable(GL_FRAMEBUFFER_SRGB);
@@ -139,6 +152,7 @@ void Renderer::render(Scene& scene, const Camera& camera, int width, int height,
     glViewport(0, 0, width, height);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     glDisable(GL_DEPTH_TEST);
+    glDisable(GL_CULL_FACE);
 
     post.use();
     post.setInt("effect", postEffect);

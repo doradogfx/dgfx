@@ -12,6 +12,7 @@ public:
 
     bool blinn = true;
     bool wireframe = false;
+    bool faceCulling = true;
     int postEffect = None;
     float gamma = 1.0f;
 
@@ -21,6 +22,7 @@ public:
     float shadowBiasMin = 0.0005f;
     float shadowBiasMax = 0.005f;
     bool pcf = true;
+    bool shadowCullFront = false; // only back faces go into the shadow map, an alternative fix for acne
 
     Renderer(int width, int height);
     ~Renderer();

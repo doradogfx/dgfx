@@ -184,6 +184,7 @@ void debugPanel(GLFWwindow* window, Scene& scene, Renderer& renderer) {
     ImGui::SliderFloat("Bias min", &renderer.shadowBiasMin, 0.0f, 0.01f, "%.4f");
     ImGui::SliderFloat("Bias max", &renderer.shadowBiasMax, 0.0f, 0.05f, "%.4f");
     ImGui::Checkbox("PCF (soft edges)", &renderer.pcf);
+    ImGui::Checkbox("Cull front faces", &renderer.shadowCullFront);
 
     if (ImGui::TreeNode("Shadow map")) {
         // GL textures start at the bottom row, ImGui images at the top, so flip V.
@@ -199,6 +200,7 @@ void debugPanel(GLFWwindow* window, Scene& scene, Renderer& renderer) {
 
     ImGui::SeparatorText("Render");
     ImGui::Checkbox("Wireframe", &renderer.wireframe);
+    ImGui::Checkbox("Face culling", &renderer.faceCulling);
     ImGui::Checkbox("ImGui demo", &showDemo);
 
     ImGui::SeparatorText("Post");

@@ -46,7 +46,8 @@ void Mesh::draw() const {
 Mesh makeCube() {
     // The normal points straight out of the face. Corners can't be shared between faces because each face
     // needs its own normal, so 4 vertices per face.
-    // Each face lists bottom-left, bottom-right, top-right, top-left as seen from outside the cube.
+    // Each face lists bottom-left, bottom-right, top-right, top-left as seen from outside the cube,
+    // so its triangles are counter-clockwise from outside: front faces for culling.
     std::vector<Vertex> vertices = {
         // front (+z)
         {{-0.5f, -0.5f,  0.5f}, { 0.0f,  0.0f,  1.0f}},
@@ -128,7 +129,8 @@ Mesh makeSphere(int segments, int rings) {
             const unsigned int a = r * perRing + s; // this ring
             const unsigned int b = a + perRing;     // same segment, next ring down
 
-            indices.insert(indices.end(), {a, b, a + 1, a + 1, b, b + 1});
+            // Counter-clockwise seen from outside, so the outside is the front face for culling.
+            indices.insert(indices.end(), {a, a + 1, b, a + 1, b + 1, b});
         }
     }
 
