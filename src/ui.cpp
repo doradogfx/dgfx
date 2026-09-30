@@ -70,6 +70,11 @@ void debugPanel(Scene& scene, Renderer& renderer) {
     }
 
     ImGui::SeparatorText("Render");
+
+    static bool vsync = true; // matches glfwSwapInterval(1) in main
+    if (ImGui::Checkbox("VSync", &vsync))
+        glfwSwapInterval(vsync ? 1 : 0);
+
     ImGui::Checkbox("Wireframe", &renderer.wireframe);
     ImGui::Checkbox("ImGui demo", &showDemo);
 
