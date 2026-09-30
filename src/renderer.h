@@ -14,6 +14,8 @@ public:
     bool wireframe = false;
     bool faceCulling = true;
     bool showSkybox = true;
+    bool reflections = true;
+    bool fresnel = true;
     int postEffect = None;
     float gamma = 1.0f;
 

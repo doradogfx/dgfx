@@ -116,6 +116,10 @@ void Renderer::render(Scene& scene, const Camera& camera, int width, int height,
     lit.setBool("pcf", pcf);
     shadowMap.bindDepth(2);
 
+    lit.setBool("reflections", reflections);
+    lit.setBool("fresnel", fresnel);
+    scene.sky.bind(3);
+
     for (const Object& obj : scene.objects) {
         const glm::mat4 model = modelMatrix(obj);
 
@@ -132,6 +136,9 @@ void Renderer::render(Scene& scene, const Camera& camera, int width, int height,
         lit.setVec3("material.diffuse", obj.material.diffuse);
         lit.setVec3("material.specular", obj.material.specular);
         lit.setFloat("material.shininess", obj.material.shininess);
+        lit.setFloat("material.reflectivity", obj.material.reflectivity);
+        lit.setFloat("material.refractivity", obj.material.refractivity);
+        lit.setFloat("material.ior", obj.material.ior);
 
         obj.mesh->draw();
     }

@@ -206,6 +206,8 @@ void debugPanel(GLFWwindow* window, Scene& scene, Renderer& renderer) {
         ImGui::Checkbox("Wireframe", &renderer.wireframe);
         ImGui::Checkbox("Face culling", &renderer.faceCulling);
         ImGui::Checkbox("Skybox", &renderer.showSkybox);
+        ImGui::Checkbox("Environment reflections", &renderer.reflections);
+        ImGui::Checkbox("Fresnel", &renderer.fresnel);
         ImGui::Combo("Post effect", &renderer.postEffect, "None\0Grayscale\0Invert\0Blur\0Sharpen\0Edge detection\0");
         ImGui::SliderFloat("Gamma", &renderer.gamma, 0.5f, 2.0f, "%.2f");
     }

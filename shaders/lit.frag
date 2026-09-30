@@ -13,6 +13,9 @@ struct Material {
     vec3 diffuse;
     vec3 specular;
     float shininess;
+    float reflectivity; // how much of the sky it mirrors (head-on, when Fresnel is on)
+    float refractivity; // how much of the sky shows through, bent
+    float ior;          // index of refraction
 };
 
 // Outside the struct: layout(binding) isn't allowed on struct members.
@@ -20,6 +23,10 @@ layout(binding = 0) uniform sampler2D diffuseMap;
 layout(binding = 1) uniform sampler2D specularMap;
 layout(binding = 2) uniform sampler2D shadowMap; // the sun's depth, rendered from its point of view
 
+layout(binding = 3) uniform samplerCube environment; // the skybox, for reflections and refraction
+
+uniform bool reflections;
+uniform bool fresnel;
 uniform bool shadowsEnabled;
 uniform float shadowBiasMin;
 uniform float shadowBiasMax;
@@ -172,6 +179,26 @@ void main() {
 
     if (spotLight.enabled)
         result += calcSpotLight(spotLight);
+
+    // Environment: look the sky up along the view ray bent by the surface. Only the sky, not other objects.
+    if (reflections && (material.reflectivity > 0.0 || material.refractivity > 0.0)) {
+        // Refraction bends the ray into the material (single surface; real glass bends it again on the way out).
+        vec3 refracted = texture(environment, refract(-v, n, 1.0 / material.ior)).rgb;
+        result = mix(result, refracted, material.refractivity);
+
+        // Fresnel (Schlick): surfaces mirror more at grazing angles, like a lake near the horizon.
+        // reflectivity is the head-on amount, rising to 1 at the silhouette.
+        float amount = material.reflectivity;
+
+        if (fresnel)
+            amount += (1.0 - amount) * pow(1.0 - max(dot(n, v), 0.0), 5.0);
+
+        // The specular map masks where the surface is shiny (the crate's rim, not its wood);
+        // the specular tint colors the reflection, so gold reflects gold.
+        amount *= texture(specularMap, vUV).r;
+        vec3 reflected = texture(environment, reflect(-v, n)).rgb * material.specular;
+        result = mix(result, reflected, amount);
+    }
 
     color = vec4(result, 1.0);
 }

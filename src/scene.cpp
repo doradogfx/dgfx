@@ -44,11 +44,17 @@ Scene::Scene()
 
     // Gold, from the classic OpenGL material tables (devernay.free.fr/cours/opengl/materials.html).
     // Unlike plastic, a metal's highlight takes the metal's own color.
-    const Material gold = {nullptr, nullptr, srgb({0.75164f, 0.60648f, 0.22648f}), srgb({0.628281f, 0.555802f, 0.366065f}), 51.2f * 4.0f}; // table value is for Phong
+    const Material gold = {nullptr, nullptr, srgb({0.75164f, 0.60648f, 0.22648f}), srgb({0.628281f, 0.555802f, 0.366065f}), 51.2f * 4.0f, 0.4f}; // table value is for Phong
 
     // Wooden crate with a steel rim. The specular map is black over the wood and bright over the metal,
-    // so only the rim catches highlights. White tints: the maps alone decide the colors.
-    const Material crate = {&crateDiffuse, &crateSpecular, glm::vec3(1.0f), glm::vec3(1.0f), 128.0f};
+    // so only the rim catches highlights, and only the rim reflects the sky. White tints: the maps decide.
+    const Material crate = {&crateDiffuse, &crateSpecular, glm::vec3(1.0f), glm::vec3(1.0f), 128.0f, 0.3f};
+
+    // Chrome: almost no color of its own, a perfect mirror of the environment.
+    const Material chrome = {nullptr, nullptr, glm::vec3(0.02f), glm::vec3(1.0f), 512.0f, 1.0f};
+
+    // Glass: mostly see-through. 0.04 is real glass's head-on reflectivity; Fresnel raises it at the edges.
+    const Material glass = {nullptr, nullptr, glm::vec3(0.02f), glm::vec3(1.0f), 512.0f, 0.04f, 0.9f, 1.52f};
 
     objects = {
         {&cube,   { 0.0f, -0.55f,  0.0f},  0.0f, {10.0f, 0.1f, 10.0f}, rubber({0.6f, 0.6f, 0.6f})},            // floor, top surface at y = -0.5
@@ -59,5 +65,7 @@ Scene::Scene()
         {&sphere, {-2.2f,  0.0f,  -1.2f}, 15.0f, { 1.0f, 1.0f,  1.0f}, gold},                                  // gold
         {&cube,   { 0.0f,  0.0f,   2.4f}, 25.0f, { 1.0f, 1.0f,  1.0f}, crate},                                 // crate, front
         {&cube,   {-3.2f,  0.0f,   0.6f}, 10.0f, { 1.0f, 1.0f,  1.0f}, crate},                                 // crate, left
+        {&sphere, { 3.3f,  0.0f,   0.8f},  0.0f, { 1.0f, 1.0f,  1.0f}, chrome},                                // chrome
+        {&sphere, {-0.4f,  0.0f,  -2.4f},  0.0f, { 1.0f, 1.0f,  1.0f}, glass},                                 // glass
     };
 }
