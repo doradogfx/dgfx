@@ -5,7 +5,7 @@
 
 #include <cstdio>
 
-static GLuint upload(int width, int height, const unsigned char* pixels) {
+static GLuint upload(int width, int height, const unsigned char* pixels, GLenum internalFormat) {
     GLuint tex;
     glGenTextures(1, &tex);
     glBindTexture(GL_TEXTURE_2D, tex);
@@ -17,13 +17,13 @@ static GLuint upload(int width, int height, const unsigned char* pixels) {
     // Sharper, non-flickering textures on surfaces seen at grazing angles. Core since GL 4.6.
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY, 16.0f);
 
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+    glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
     glGenerateMipmap(GL_TEXTURE_2D);
 
     return tex;
 }
 
-Texture::Texture(const char* path) {
+Texture::Texture(const char* path, bool srgb) {
     stbi_set_flip_vertically_on_load(true);
 
     int width, height, channels;
@@ -34,7 +34,7 @@ Texture::Texture(const char* path) {
         return;
     }
 
-    id = upload(width, height, data);
+    id = upload(width, height, data, srgb ? GL_SRGB8_ALPHA8 : GL_RGBA8);
 
     stbi_image_free(data);
 }
@@ -46,7 +46,7 @@ Texture::Texture(glm::vec3 color) {
         static_cast<unsigned char>(c.r), static_cast<unsigned char>(c.g), static_cast<unsigned char>(c.b), 255,
     };
 
-    id = upload(1, 1, pixel);
+    id = upload(1, 1, pixel, GL_RGBA8);
 }
 
 Texture::~Texture() {

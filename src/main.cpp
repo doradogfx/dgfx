@@ -28,22 +28,28 @@ struct Material {
     float shininess;
 };
 
+// Colors picked by eye are sRGB (gamma-encoded); lighting math needs linear values.
+// 2.2 approximates the exact sRGB curve closely enough for picked colors.
+static glm::vec3 srgb(glm::vec3 color) {
+    return glm::pow(color, glm::vec3(2.2f));
+}
+
 // Plastic: the surface color everywhere, plus a white-ish highlight (the light's color, not the surface's).
 static Material plastic(glm::vec3 color, float shininess = 128.0f) {
-    return {nullptr, nullptr, color, glm::vec3(0.5f), shininess};
+    return {nullptr, nullptr, srgb(color), glm::vec3(0.5f), shininess};
 }
 
 // Rubber: the surface color, almost no highlight, and what little there is is wide and dull.
 static Material rubber(glm::vec3 color) {
-    return {nullptr, nullptr, color, glm::vec3(0.1f), 8.0f};
+    return {nullptr, nullptr, srgb(color), glm::vec3(0.1f), 8.0f};
 }
 
 static PointLight coloredLight(glm::vec3 position, glm::vec3 color) {
     PointLight light;
     light.position = position;
-    light.ambient = color * 0.02f;
-    light.diffuse = color;
-    light.specular = color;
+    light.ambient = srgb(color) * 0.01f;
+    light.diffuse = srgb(color);
+    light.specular = srgb(color);
     return light;
 }
 
@@ -59,6 +65,7 @@ int main() {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    glfwWindowHint(GLFW_SRGB_CAPABLE, GLFW_TRUE); // needed for GL_FRAMEBUFFER_SRGB on the default framebuffer
 
     GLFWwindow* window = glfwCreateWindow(1280, 720, "dgfx", nullptr, nullptr);
 
@@ -86,7 +93,8 @@ int main() {
         Shader lamp(SHADER_DIR "lit.vert", SHADER_DIR "light.frag");
 
         DirLight sun;
-        sun.diffuse = {0.3f, 0.28f, 0.25f}; // dim and slightly warm, so the point lights stand out
+        sun.ambient = glm::vec3(0.01f);
+        sun.diffuse = srgb({0.3f, 0.28f, 0.25f}); // dim and slightly warm, so the point lights stand out
 
         PointLight points[kMaxPointLights] = {
             coloredLight({ 2.0f, 1.0f,  1.5f}, {1.0f, 0.2f, 0.2f}),
@@ -107,8 +115,8 @@ int main() {
         const Mesh sphere = makeSphere();
 
         const Texture white(glm::vec3(1.0f));
-        const Texture crateDiffuse(TEXTURE_DIR "container2.png");
-        const Texture crateSpecular(TEXTURE_DIR "container2_specular.png");
+        const Texture crateDiffuse(TEXTURE_DIR "container2.png", true);
+        const Texture crateSpecular(TEXTURE_DIR "container2_specular.png", false);
 
         struct Object {
             const Mesh* mesh;
@@ -120,7 +128,7 @@ int main() {
 
         // Gold, from the classic OpenGL material tables (devernay.free.fr/cours/opengl/materials.html).
         // Unlike plastic, a metal's highlight takes the metal's own color.
-        const Material gold = {nullptr, nullptr, {0.75164f, 0.60648f, 0.22648f}, {0.628281f, 0.555802f, 0.366065f}, 51.2f * 4.0f}; // table value is for Phong
+        const Material gold = {nullptr, nullptr, srgb({0.75164f, 0.60648f, 0.22648f}), srgb({0.628281f, 0.555802f, 0.366065f}), 51.2f * 4.0f}; // table value is for Phong
 
         // Wooden crate with a steel rim. The specular map is black over the wood and bright over the metal,
         // so only the rim catches highlights. White tints: the maps alone decide the colors.
@@ -322,8 +330,10 @@ int main() {
             glViewport(0, 0, width, height);
             glPolygonMode(GL_FRONT_AND_BACK, wireframe ? GL_LINE : GL_FILL);
 
-            // Dark background so the lighting stands out.
-            glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+            // The scene is computed in linear space; the GPU encodes to sRGB when writing each pixel (and the clear).
+            glEnable(GL_FRAMEBUFFER_SRGB);
+
+            glClearColor(0.01f, 0.01f, 0.01f, 1.0f); // linear, displays as a dark grey
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
             // Camera's vertical field of view, window aspect ratio (so nothing stretches), and near/far clip planes.
@@ -387,8 +397,9 @@ int main() {
                 sphere.draw();
             }
 
-            // UI last, on top of the scene. Always filled, even when the scene is drawn as wireframe.
+            // UI last, on top of the scene.
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+            glDisable(GL_FRAMEBUFFER_SRGB);
             ImGui::Render();
             ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 

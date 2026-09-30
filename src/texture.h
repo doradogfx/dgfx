@@ -5,7 +5,9 @@
 
 class Texture {
 public:
-    explicit Texture(const char* path);
+    // srgb: true for color images (diffuse/albedo), sampled as linear by the GPU.
+    // false for data images (specular, normal maps): their values are used as-is.
+    Texture(const char* path, bool srgb);
     explicit Texture(glm::vec3 color);
     ~Texture();
 
