@@ -2,6 +2,7 @@
 #include <GLFW/glfw3.h>
 
 #include "camera.h"
+#include "framebuffer.h"
 #include "light.h"
 #include "mesh.h"
 #include "shader.h"
@@ -88,9 +89,24 @@ int main() {
     std::printf("OpenGL %s | %s\n", glGetString(GL_VERSION), glGetString(GL_RENDERER));
 
     {
-        // Lit objects and the lamp share the vertex shader; only how the pixels are colored differs.
         Shader lit(SHADER_DIR "lit.vert", SHADER_DIR "lit.frag");
         Shader lamp(SHADER_DIR "lit.vert", SHADER_DIR "light.frag");
+        Shader post(SHADER_DIR "post.vert", SHADER_DIR "post.frag");
+
+        // The scene renders here; the post pass then draws it to the window.
+        int fbWidth, fbHeight;
+        glfwGetFramebufferSize(window, &fbWidth, &fbHeight);
+        Framebuffer sceneTarget(fbWidth, fbHeight);
+
+        // The post pass's full-screen triangle comes from gl_VertexID alone, but core profile still requires
+        // a VAO to be bound for any draw, so an empty one.
+        GLuint emptyVao;
+        glGenVertexArrays(1, &emptyVao);
+
+        // Values match the constants in post.frag.
+        enum PostEffect { None, Grayscale, Invert, Blur, Sharpen, Edges };
+        int postEffect = None;
+        float userGamma = 1.0f;
 
         DirLight sun;
         sun.ambient = glm::vec3(0.01f);
@@ -144,8 +160,6 @@ int main() {
             {&cube,   { 0.0f,  0.0f,   2.4f}, 25.0f, { 1.0f, 1.0f,  1.0f}, crate},                                 // crate, front
             {&cube,   {-3.2f,  0.0f,   0.6f}, 10.0f, { 1.0f, 1.0f,  1.0f}, crate},                                 // crate, left
         };
-
-        glEnable(GL_DEPTH_TEST);
 
         Camera camera;
         camera.position = glm::vec3(0.0f, 2.0f, 6.0f);
@@ -322,13 +336,20 @@ int main() {
             ImGui::SeparatorText("Render");
             ImGui::Checkbox("Wireframe", &wireframe);
             ImGui::Checkbox("ImGui demo", &showDemo);
+
+            ImGui::SeparatorText("Post");
+            ImGui::Combo("Effect", &postEffect, "None\0Grayscale\0Invert\0Blur\0Sharpen\0Edge detection\0");
+            ImGui::SliderFloat("Gamma", &userGamma, 0.5f, 2.0f, "%.2f");
             ImGui::End();
 
             if (showDemo)
                 ImGui::ShowDemoWindow(&showDemo);
 
-            glViewport(0, 0, width, height);
+            // Scene pass, into the off-screen target.
+            sceneTarget.resize(width, height);
+            sceneTarget.bind();
             glPolygonMode(GL_FRONT_AND_BACK, wireframe ? GL_LINE : GL_FILL);
+            glEnable(GL_DEPTH_TEST);
 
             // The scene is computed in linear space; the GPU encodes to sRGB when writing each pixel (and the clear).
             glEnable(GL_FRAMEBUFFER_SRGB);
@@ -397,8 +418,21 @@ int main() {
                 sphere.draw();
             }
 
-            // UI last, on top of the scene.
+            // Post pass: the scene texture through the post shader onto the window, one full-screen triangle.
+            // sRGB stays on, so the window gets the final encoding.
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            glViewport(0, 0, width, height);
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+            glDisable(GL_DEPTH_TEST);
+
+            post.use();
+            post.setInt("effect", postEffect);
+            post.setFloat("gamma", userGamma);
+            sceneTarget.bindColor(0);
+            glBindVertexArray(emptyVao);
+            glDrawArrays(GL_TRIANGLES, 0, 3);
+
+            // UI last, on top.
             glDisable(GL_FRAMEBUFFER_SRGB);
             ImGui::Render();
             ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -410,6 +444,8 @@ int main() {
         ImGui_ImplOpenGL3_Shutdown();
         ImGui_ImplGlfw_Shutdown();
         ImGui::DestroyContext();
+
+        glDeleteVertexArrays(1, &emptyVao);
     }
 
     glfwDestroyWindow(window);
