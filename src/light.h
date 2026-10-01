@@ -21,7 +21,7 @@ struct DirLight {
 // A bulb: shines everywhere from a position, fading with distance as 1 / (constant + linear*d + quadratic*d^2).
 struct PointLight {
     bool enabled = true;
-    glm::vec3 position{0.0f};
+    glm::vec3 position{0.0f}; // world space, filled in from the entity's transform when rendering
     glm::vec3 ambient{0.0f};
     glm::vec3 diffuse{1.0f};
     glm::vec3 specular{1.0f};
@@ -33,7 +33,7 @@ struct PointLight {
 // A point light limited to a cone, with a soft edge between the inner and outer angle (degrees).
 struct SpotLight {
     bool enabled = false;
-    glm::vec3 position{0.0f};
+    glm::vec3 position{0.0f}; // world space, filled in when rendering (the flashlight follows the camera)
     glm::vec3 direction{0.0f, 0.0f, -1.0f};
     glm::vec3 ambient{0.0f};
     glm::vec3 diffuse{1.0f};

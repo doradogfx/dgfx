@@ -31,7 +31,7 @@ public:
     ~Renderer();
 
     // Draws a frame: the scene into the off-screen target, then the post pass onto the window.
-    void render(Scene& scene, const Camera& camera, int width, int height, float time);
+    void render(Scene& scene, const Camera& camera, int width, int height);
 
     // For the debug preview.
     GLuint shadowMapTexture() const { return shadowMap.textureId(); }

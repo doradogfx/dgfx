@@ -2,6 +2,8 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 
+#include <vector>
+
 Renderer::Renderer(int width, int height)
     : lit(SHADER_DIR "lit.vert", SHADER_DIR "lit.frag"),
       lamp(SHADER_DIR "lit.vert", SHADER_DIR "light.frag"),
@@ -22,19 +24,9 @@ Renderer::~Renderer() {
     glDeleteVertexArrays(1, &emptyVao);
 }
 
-// Right to left: scale, then rotate around the object's center, then move it into place.
-static glm::mat4 modelMatrix(const Object& obj) {
-    glm::mat4 model = glm::translate(glm::mat4(1.0f), obj.position);
-    model = glm::rotate(model, glm::radians(obj.yaw), glm::vec3(0.0f, 1.0f, 0.0f));
-    return glm::scale(model, obj.scale);
-}
-
-// Same, but first moves the model's base (bottom center) to the origin, so `position` is where it rests.
-static glm::mat4 modelMatrix(const ModelInstance& instance) {
-    glm::mat4 model = glm::translate(glm::mat4(1.0f), instance.position);
-    model = glm::rotate(model, glm::radians(instance.yaw), glm::vec3(0.0f, 1.0f, 0.0f));
-    model = glm::scale(model, glm::vec3(instance.scale));
-    return glm::translate(model, -instance.model->base());
+// A model's entity transform places its base (bottom center), so move the base to the origin first.
+static glm::mat4 modelMatrix(const Scene& scene, entt::entity entity, const Model& model) {
+    return glm::translate(scene.worldMatrix(entity), -model.base());
 }
 
 // The sun as a camera: an orthographic box (parallel rays, no perspective) around the scene, looking along
@@ -82,9 +74,42 @@ void Renderer::drawLit(const Scene& scene, const Mesh& mesh, const Material& mat
     mesh.draw();
 }
 
-void Renderer::render(Scene& scene, const Camera& camera, int width, int height, float time) {
-    const glm::mat4 lightSpace = sunLightSpace(scene.sun);
-    const bool castShadows = shadows && scene.sun.enabled;
+void Renderer::render(Scene& scene, const Camera& camera, int width, int height) {
+    entt::registry& registry = scene.registry;
+
+    // Gather the lights from their entities. The shader takes one sun, up to kMaxPointLights point lights
+    // and one spot; extra ones are ignored. A missing light is sent disabled.
+    DirLight sun;
+    sun.enabled = false;
+
+    for (auto [entity, light] : registry.view<DirLight>().each()) {
+        if (light.enabled) {
+            sun = light;
+            break;
+        }
+    }
+
+    std::vector<PointLight> points;
+
+    for (auto [entity, light] : registry.view<PointLight>().each()) {
+        if (light.enabled && points.size() < kMaxPointLights) {
+            points.push_back(light);
+            points.back().position = glm::vec3(scene.worldMatrix(entity)[3]); // translation column
+        }
+    }
+
+    // The flashlight follows the camera.
+    SpotLight spot;
+
+    for (auto [entity, light] : registry.view<SpotLight>().each()) {
+        spot = light;
+        spot.position = camera.position;
+        spot.direction = camera.front();
+        break;
+    }
+
+    const glm::mat4 lightSpace = sunLightSpace(sun);
+    const bool castShadows = shadows && sun.enabled;
 
     // Shadow pass: the scene's depth as the sun sees it. Lamps don't cast shadows.
     if (castShadows) {
@@ -98,15 +123,15 @@ void Renderer::render(Scene& scene, const Camera& camera, int width, int height,
         depth.use();
         depth.setMat4("lightSpace", lightSpace);
 
-        for (const Object& obj : scene.objects) {
-            depth.setMat4("model", modelMatrix(obj));
-            obj.mesh->draw();
+        for (auto [entity, meshRenderer] : registry.view<MeshRenderer>().each()) {
+            depth.setMat4("model", scene.worldMatrix(entity));
+            meshRenderer.mesh->draw();
         }
 
-        for (const ModelInstance& instance : scene.models) {
-            depth.setMat4("model", modelMatrix(instance));
+        for (auto [entity, modelRenderer] : registry.view<ModelRenderer>().each()) {
+            depth.setMat4("model", modelMatrix(scene, entity, *modelRenderer.model));
 
-            for (const Model::Part& part : instance.model->parts) {
+            for (const Model::Part& part : modelRenderer.model->parts) {
                 // Thin double-sided surfaces must cast shadows whichever side faces the sun.
                 setCulling((faceCulling || shadowCullFront) && !part.material.doubleSided, shadowCullFront ? GL_FRONT : GL_BACK);
                 part.mesh.draw();
@@ -131,24 +156,12 @@ void Renderer::render(Scene& scene, const Camera& camera, int width, int height,
     const glm::mat4 projection = glm::perspective(glm::radians(camera.fov), static_cast<float>(width) / height, 0.1f, 100.0f);
     const glm::mat4 view = camera.view();
 
-    // The panel edits base positions; orbiting rotates copies of them around the Y axis.
-    PointLight worldPoints[kMaxPointLights];
-    const glm::mat4 orbit = glm::rotate(glm::mat4(1.0f), scene.orbitLights ? time * 0.5f : 0.0f, Camera::worldUp);
-
-    for (int i = 0; i < kMaxPointLights; i++) {
-        worldPoints[i] = scene.points[i];
-        worldPoints[i].position = glm::vec3(orbit * glm::vec4(scene.points[i].position, 1.0f));
-    }
-
-    scene.flashlight.position = camera.position;
-    scene.flashlight.direction = camera.front();
-
     lit.use();
     lit.setMat4("projection", projection);
     lit.setMat4("view", view);
     lit.setVec3("viewPos", camera.position);
     lit.setBool("blinn", blinn);
-    setLights(lit, scene.sun, worldPoints, scene.flashlight);
+    setLights(lit, sun, points, spot);
 
     lit.setMat4("lightSpace", lightSpace);
     lit.setBool("shadowsEnabled", castShadows);
@@ -161,13 +174,13 @@ void Renderer::render(Scene& scene, const Camera& camera, int width, int height,
     lit.setBool("fresnel", fresnel);
     scene.sky.bind(3);
 
-    for (const Object& obj : scene.objects)
-        drawLit(scene, *obj.mesh, obj.material, modelMatrix(obj));
+    for (auto [entity, meshRenderer] : registry.view<MeshRenderer>().each())
+        drawLit(scene, *meshRenderer.mesh, meshRenderer.material, scene.worldMatrix(entity));
 
-    for (const ModelInstance& instance : scene.models) {
-        const glm::mat4 model = modelMatrix(instance);
+    for (auto [entity, modelRenderer] : registry.view<ModelRenderer>().each()) {
+        const glm::mat4 model = modelMatrix(scene, entity, *modelRenderer.model);
 
-        for (const Model::Part& part : instance.model->parts)
+        for (const Model::Part& part : modelRenderer.model->parts)
             drawLit(scene, part.mesh, part.material, model);
     }
 
@@ -178,10 +191,7 @@ void Renderer::render(Scene& scene, const Camera& camera, int width, int height,
     lamp.setMat4("projection", projection);
     lamp.setMat4("view", view);
 
-    for (const PointLight& p : worldPoints) {
-        if (!p.enabled)
-            continue;
-
+    for (const PointLight& p : points) {
         lamp.setMat4("model", glm::scale(glm::translate(glm::mat4(1.0f), p.position), glm::vec3(0.15f)));
         lamp.setVec3("lightColor", p.diffuse);
         scene.sphere.draw();

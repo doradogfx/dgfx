@@ -70,6 +70,7 @@ int main() {
                 glfwSetWindowShouldClose(window, GLFW_TRUE);
 
             input.update(camera, dt);
+            scene.update(dt);
 
             glfwGetFramebufferSize(window, &width, &height);
 
@@ -83,7 +84,7 @@ int main() {
             beginUI();
             debugPanel(window, scene, renderer);
 
-            renderer.render(scene, camera, width, height, static_cast<float>(now));
+            renderer.render(scene, camera, width, height);
             endUI();
 
             glfwSwapBuffers(window);

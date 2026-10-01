@@ -1,6 +1,6 @@
 # dgfx
 
-![Lit spheres with different materials on a floor, rendered by dgfx](docs/images/lighting-models.png)
+![Demo scene rendered by dgfx](docs/images/lighting-models.png)
 
 A game engine written in C++ as a learning project: the goal is to understand how game engines are designed and implemented by building one step by step, one feature at a time.
 
@@ -16,6 +16,7 @@ A game engine written in C++ as a learning project: the goal is to understand ho
 - **Post-processing**: the scene renders to an off-screen framebuffer, then a full-screen pass applies effects (grayscale, invert, blur, sharpen, edge detection) and a user gamma adjustment.
 - **Skybox**: cubemap environment rendered behind the scene (depth at the far plane, camera translation removed).
 - **Model loading** with Assimp (glTF, OBJ): meshes and their materials (diffuse/specular textures, double-sided surfaces), with a texture cache so shared images load once.
+- **Entities and components** with EnTT: parent/child transform hierarchy and a scene tree and inspector in the debug panel.
 - **Debug UI** with Dear ImGui: a live panel to tweak lights, rendering and display settings, with an FPS counter.
 
 ## Controls
@@ -39,6 +40,7 @@ A game engine written in C++ as a learning project: the goal is to understand ho
 - [GLM](https://github.com/g-truc/glm): header-only math library for vectors, matrices and transformations.
 - [Dear ImGui](https://github.com/ocornut/imgui): immediate-mode UI for the debug panel (GLFW + OpenGL 3 backends).
 - [Assimp](https://github.com/assimp/assimp): 3D model importer (glTF and OBJ importers enabled).
+- [EnTT](https://github.com/skypjack/entt): header-only entity component system.
 
 ## Building
 

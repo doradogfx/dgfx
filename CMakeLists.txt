@@ -66,6 +66,13 @@ FetchContent_Declare(assimp
     GIT_SHALLOW TRUE)
 FetchContent_MakeAvailable(assimp)
 
+# EnTT: header-only entity component system.
+FetchContent_Declare(entt
+    GIT_REPOSITORY https://github.com/skypjack/entt.git
+    GIT_TAG v3.16.0
+    GIT_SHALLOW TRUE)
+FetchContent_MakeAvailable(entt)
+
 # GLAD: OpenGL 4.6 core function loader, pre-generated and vendored in external/glad.
 add_library(glad STATIC external/glad/src/glad.c)
 target_include_directories(glad PUBLIC external/glad/include)
@@ -84,7 +91,7 @@ add_executable(dgfx
     src/shader.cpp
     src/texture.cpp
     src/ui.cpp)
-target_link_libraries(dgfx PRIVATE glfw glad glm::glm imgui assimp::assimp)
+target_link_libraries(dgfx PRIVATE glfw glad glm::glm imgui assimp::assimp EnTT::EnTT)
 target_include_directories(dgfx PRIVATE ${stb_SOURCE_DIR})
 
 # Shaders, textures and models are loaded from the source tree, so the exe finds them regardless of its working directory.

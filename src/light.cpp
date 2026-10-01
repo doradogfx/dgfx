@@ -85,7 +85,6 @@ void lightUI(DirLight& light) {
 
 void lightUI(PointLight& light) {
     ImGui::Checkbox("Enabled", &light.enabled);
-    ImGui::DragFloat3("Position", glm::value_ptr(light.position), 0.05f);
     colorsUI(light.ambient, light.diffuse, light.specular);
     attenuationUI(light.linear, light.quadratic);
 }

@@ -4,11 +4,13 @@
 #include "scene.h"
 
 #include <GLFW/glfw3.h>
+#include <glm/gtc/type_ptr.hpp>
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 
 #include <algorithm>
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -130,6 +132,106 @@ void shutdownUI() {
     ImGui::DestroyContext();
 }
 
+static entt::entity selected = entt::null;
+
+// Entities whose parent is `parent` (entt::null for roots), in creation order. Views iterate newest first.
+// ponytail: scans every entity per call, keep a children list in the scene if trees get large.
+static std::vector<entt::entity> children(const Scene& scene, entt::entity parent) {
+    std::vector<entt::entity> result;
+
+    for (auto [entity, transform] : scene.registry.view<const Transform>().each()) {
+        if (transform.parent == parent)
+            result.push_back(entity);
+    }
+
+    std::sort(result.begin(), result.end());
+    return result;
+}
+
+static void entityNode(const Scene& scene, entt::entity entity) {
+    const std::vector<entt::entity> kids = children(scene, entity);
+
+    ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
+
+    if (kids.empty())
+        flags |= ImGuiTreeNodeFlags_Leaf;
+    if (entity == selected)
+        flags |= ImGuiTreeNodeFlags_Selected;
+
+    // The entity id is the tree node's ID, so two entities with the same name ("Crate") stay distinct.
+    const void* id = reinterpret_cast<const void*>(static_cast<std::uintptr_t>(entt::to_integral(entity)));
+    const bool open = ImGui::TreeNodeEx(id, flags, "%s", scene.registry.get<Name>(entity).value.c_str());
+
+    if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen())
+        selected = entity;
+
+    if (open) {
+        for (entt::entity kid : kids)
+            entityNode(scene, kid);
+
+        ImGui::TreePop();
+    }
+}
+
+// The selected entity's components. Each gets its own ID scope, since labels like "Enabled" repeat.
+static void inspector(Scene& scene) {
+    entt::registry& registry = scene.registry;
+
+    if (!registry.valid(selected)) {
+        ImGui::TextDisabled("Select an entity to inspect it");
+        return;
+    }
+
+    ImGui::SeparatorText(registry.get<Name>(selected).value.c_str());
+
+    if (auto* transform = registry.try_get<Transform>(selected)) {
+        ImGui::PushID("transform");
+        ImGui::DragFloat3("Position", glm::value_ptr(transform->position), 0.05f);
+        ImGui::DragFloat3("Rotation", glm::value_ptr(transform->rotation), 1.0f, 0.0f, 0.0f, "%.1f deg");
+        ImGui::DragFloat3("Scale", glm::value_ptr(transform->scale), 0.01f);
+        ImGui::PopID();
+    }
+
+    if (auto* rotator = registry.try_get<Rotator>(selected)) {
+        ImGui::PushID("rotator");
+        ImGui::SeparatorText("Rotator");
+        ImGui::Checkbox("Enabled", &rotator->enabled);
+        ImGui::DragFloat3("Speed", glm::value_ptr(rotator->degreesPerSecond), 1.0f, 0.0f, 0.0f, "%.1f deg/s");
+        ImGui::PopID();
+    }
+
+    if (auto* light = registry.try_get<DirLight>(selected)) {
+        ImGui::PushID("dirlight");
+        ImGui::SeparatorText("Directional light");
+        lightUI(*light);
+        ImGui::PopID();
+    }
+
+    if (auto* light = registry.try_get<PointLight>(selected)) {
+        ImGui::PushID("pointlight");
+        ImGui::SeparatorText("Point light");
+        lightUI(*light);
+        ImGui::PopID();
+    }
+
+    if (auto* light = registry.try_get<SpotLight>(selected)) {
+        ImGui::PushID("spotlight");
+        ImGui::SeparatorText("Spot light (follows the camera)");
+        lightUI(*light);
+        ImGui::PopID();
+    }
+
+    if (registry.all_of<MeshRenderer>(selected)) {
+        ImGui::SeparatorText("Mesh renderer");
+        ImGui::TextDisabled("Mesh with its own material");
+    }
+
+    if (auto* model = registry.try_get<ModelRenderer>(selected)) {
+        ImGui::SeparatorText("Model renderer");
+        ImGui::TextDisabled("%zu parts, materials from the file", model->model->parts.size());
+    }
+}
+
 void debugPanel(GLFWwindow* window, Scene& scene, Renderer& renderer) {
     static bool showDemo = false;
     const ImGuiIO& io = ImGui::GetIO();
@@ -146,29 +248,12 @@ void debugPanel(GLFWwindow* window, Scene& scene, Renderer& renderer) {
 
     // Collapsing headers don't push an ID, so sections that reuse labels ("Enabled", "Resolution") get their
     // own ID scope. Tree nodes push one themselves.
-    ImGui::PushID("lighting");
-    if (ImGui::CollapsingHeader("Lighting")) {
-        ImGui::Checkbox("Blinn-Phong", &renderer.blinn);
-        ImGui::Checkbox("Orbit point lights", &scene.orbitLights);
+    ImGui::PushID("scene");
+    if (ImGui::CollapsingHeader("Scene")) {
+        for (entt::entity root : children(scene, entt::null))
+            entityNode(scene, root);
 
-        if (ImGui::TreeNode("Sun")) {
-            lightUI(scene.sun);
-            ImGui::TreePop();
-        }
-
-        for (int i = 0; i < kMaxPointLights; i++) {
-            const std::string label = "Point " + std::to_string(i + 1);
-
-            if (ImGui::TreeNode(label.c_str())) {
-                lightUI(scene.points[i]);
-                ImGui::TreePop();
-            }
-        }
-
-        if (ImGui::TreeNode("Flashlight")) {
-            lightUI(scene.flashlight);
-            ImGui::TreePop();
-        }
+        inspector(scene);
     }
     ImGui::PopID();
 
@@ -203,6 +288,7 @@ void debugPanel(GLFWwindow* window, Scene& scene, Renderer& renderer) {
 
     ImGui::PushID("rendering");
     if (ImGui::CollapsingHeader("Rendering")) {
+        ImGui::Checkbox("Blinn-Phong", &renderer.blinn);
         ImGui::Checkbox("Wireframe", &renderer.wireframe);
         ImGui::Checkbox("Face culling", &renderer.faceCulling);
         ImGui::Checkbox("Skybox", &renderer.showSkybox);

@@ -1,33 +1,18 @@
 #pragma once
 
+#include "components.h"
 #include "cubemap.h"
 #include "light.h"
-#include "material.h"
 #include "mesh.h"
 #include "model.h"
 #include "texture.h"
 
+#include <entt/entt.hpp>
 #include <glm/glm.hpp>
 
-#include <vector>
+#include <string>
 
-struct Object {
-    const Mesh* mesh;
-    glm::vec3 position;
-    float yaw; // degrees around Y
-    glm::vec3 scale;
-    Material material;
-};
-
-// A loaded model placed in the world. Each part keeps its own material from the file.
-struct ModelInstance {
-    const Model* model;
-    glm::vec3 position; // where the model's base (bottom center) rests
-    float yaw;          // degrees around Y
-    float scale;        // uniform, see Model::fitScale
-};
-
-// Everything in the world: the resources objects use, the objects, and the lights.
+// The world: resources (meshes, textures, models) and the entities that use them.
 struct Scene {
     Scene(); // builds the demo scene
 
@@ -43,15 +28,19 @@ struct Scene {
     TextureCache textures; // declared before the models, so it outlives them
     Model shiba;
 
-    std::vector<Object> objects;
-    std::vector<ModelInstance> models;
+    // All entities and their components.
+    entt::registry registry;
 
-    DirLight sun;
-    PointLight points[kMaxPointLights];
-    SpotLight flashlight;
-    bool orbitLights = true;
+    // A new entity with a Name and a Transform.
+    entt::entity create(const std::string& name, const Transform& transform = {});
 
-    // Objects point into this scene's own meshes and textures, so a copy would point back into the original.
+    // Local transform combined with every parent's, i.e. where the entity is in the world.
+    glm::mat4 worldMatrix(entt::entity entity) const;
+
+    // Per-frame systems that change the scene (rotators).
+    void update(float dt);
+
+    // Components point into this scene's own meshes and textures, so a copy would point back into the original.
     Scene(const Scene&) = delete;
     Scene& operator=(const Scene&) = delete;
 };
