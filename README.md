@@ -1,6 +1,6 @@
 # dgfx
 
-![Demo scene rendered by dgfx](docs/images/lighting-models.png)
+![Demo scene rendered by dgfx](docs/images/scene-entities-ui.png)
 
 A game engine written in C++ as a learning project: the goal is to understand how game engines are designed and implemented by building one step by step, one feature at a time.
 
