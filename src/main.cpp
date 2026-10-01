@@ -91,7 +91,7 @@ int main() {
             }
 
             beginUI();
-            debugPanel(window, scene, renderer);
+            debugUI(window, scene, renderer);
 
             renderer.render(scene, camera, width, height);
             endUI();

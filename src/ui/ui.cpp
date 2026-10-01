@@ -250,95 +250,165 @@ static void inspector(Scene& scene) {
     }
 }
 
-void debugPanel(GLFWwindow* window, Scene& scene, Renderer& renderer) {
-    static bool showDemo = false;
-    const ImGuiIO& io = ImGui::GetIO();
+// Which panels are open, toggled from the View menu.
+struct Panels {
+    bool hierarchy = true;
+    bool inspector = true;
+    bool renderer = true;
+    bool display = true;
+    bool stats = true;
+    bool demo = false; // ImGui's demo window: a catalog of every widget
+};
 
-    ImGui::SetNextWindowPos(ImVec2(10.0f, 10.0f), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(340.0f * uiScale, 0.0f), ImGuiCond_FirstUseEver);
-    ImGui::Begin("dgfx");
+static Panels panels;
+
+// Position and size apply only the first time (afterwards imgui.ini remembers where the user put it).
+// Begin returns false while the window is collapsed, but End must be called either way.
+static bool beginPanel(const char* name, bool* open, ImVec2 pos, ImVec2 size) {
+    ImGui::SetNextWindowPos(pos, ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(size, ImGuiCond_FirstUseEver);
+    const bool visible = ImGui::Begin(name, open);
 
     // Negative width = the panel's width minus this much, which leaves room for labels at any panel size.
     ImGui::PushItemWidth(-ImGui::GetFontSize() * 8.0f);
+    return visible;
+}
 
-    ImGui::Text("%.1f FPS (%.2f ms)", io.Framerate, 1000.0f / io.Framerate);
-    ImGui::TextDisabled("Tab: toggle camera / UI mode");
-
-    // Collapsing headers don't push an ID, so sections that reuse labels ("Enabled", "Resolution") get their
-    // own ID scope. Tree nodes push one themselves.
-    ImGui::PushID("scene");
-    if (ImGui::CollapsingHeader("Scene")) {
-        for (entt::entity root : children(scene, entt::null))
-            entityNode(scene, root);
-
-        inspector(scene);
-    }
-    ImGui::PopID();
-
-    ImGui::PushID("shadows");
-    if (ImGui::CollapsingHeader("Shadows")) {
-        ImGui::Checkbox("Enabled", &renderer.shadows);
-
-        const int resolutions[] = {1024, 2048, 4096};
-        const std::string current = std::to_string(renderer.shadowResolution);
-
-        if (ImGui::BeginCombo("Resolution", current.c_str())) {
-            for (int r : resolutions) {
-                if (ImGui::Selectable(std::to_string(r).c_str(), r == renderer.shadowResolution))
-                    renderer.shadowResolution = r;
-            }
-
-            ImGui::EndCombo();
-        }
-
-        ImGui::SliderFloat("Bias min", &renderer.shadowBiasMin, 0.0f, 0.01f, "%.4f");
-        ImGui::SliderFloat("Bias max", &renderer.shadowBiasMax, 0.0f, 0.05f, "%.4f");
-        ImGui::Checkbox("PCF (soft edges)", &renderer.pcf);
-        ImGui::Checkbox("Cull front faces", &renderer.shadowCullFront);
-
-        if (ImGui::TreeNode("Shadow map")) {
-            // GL textures start at the bottom row, ImGui images at the top, so flip V.
-            const float size = 200.0f * uiScale;
-            ImGui::Image(static_cast<ImTextureID>(renderer.shadowMapTexture()), ImVec2(size, size), ImVec2(0.0f, 1.0f), ImVec2(1.0f, 0.0f));
-            ImGui::TreePop();
-        }
-    }
-    ImGui::PopID();
-
-    ImGui::PushID("rendering");
-    if (ImGui::CollapsingHeader("Rendering")) {
-        ImGui::Checkbox("Blinn-Phong", &renderer.blinn);
-        ImGui::Checkbox("Wireframe", &renderer.wireframe);
-        ImGui::Checkbox("Face culling", &renderer.faceCulling);
-        ImGui::Checkbox("Skybox", &renderer.showSkybox);
-        ImGui::Checkbox("Environment reflections", &renderer.reflections);
-        ImGui::Checkbox("Fresnel", &renderer.fresnel);
-        ImGui::Combo("Post effect", &renderer.postEffect, "None\0Grayscale\0Invert\0Blur\0Sharpen\0Edge detection\0");
-        ImGui::SliderFloat("Gamma", &renderer.gamma, 0.5f, 2.0f, "%.2f");
-    }
-    ImGui::PopID();
-
-    ImGui::PushID("display");
-    if (ImGui::CollapsingHeader("Display")) {
-        displaySettings(window);
-
-        // Applied when the slider is released: rescaling while dragging would resize the slider under the mouse.
-        ImGui::SliderFloat("UI scale", &uiScale, 0.75f, 2.5f, "%.2f");
-
-        if (ImGui::IsItemDeactivatedAfterEdit())
-            applyUiScale(uiScale);
-
-        if (ImGui::Checkbox("VSync", &vsync))
-            glfwSwapInterval(vsync ? 1 : 0);
-    }
-    ImGui::PopID();
-
-    if (ImGui::CollapsingHeader("Debug"))
-        ImGui::Checkbox("ImGui demo", &showDemo);
-
+static void endPanel() {
     ImGui::PopItemWidth();
     ImGui::End();
+}
 
-    if (showDemo)
-        ImGui::ShowDemoWindow(&showDemo);
+static void rendererPanel(Renderer& renderer) {
+    ImGui::SeparatorText("Rendering");
+    ImGui::Checkbox("Blinn-Phong", &renderer.blinn);
+    ImGui::Checkbox("Wireframe", &renderer.wireframe);
+    ImGui::Checkbox("Face culling", &renderer.faceCulling);
+    ImGui::Checkbox("Skybox", &renderer.showSkybox);
+    ImGui::Checkbox("Environment reflections", &renderer.reflections);
+    ImGui::Checkbox("Fresnel", &renderer.fresnel);
+
+    ImGui::SeparatorText("Post-processing");
+    ImGui::Combo("Effect", &renderer.postEffect, "None\0Grayscale\0Invert\0Blur\0Sharpen\0Edge detection\0");
+    ImGui::SliderFloat("Gamma", &renderer.gamma, 0.5f, 2.0f, "%.2f");
+
+    ImGui::SeparatorText("Sun shadows");
+    ImGui::Checkbox("Enabled", &renderer.shadows);
+
+    const int resolutions[] = {1024, 2048, 4096};
+    const std::string current = std::to_string(renderer.shadowResolution);
+
+    if (ImGui::BeginCombo("Resolution", current.c_str())) {
+        for (int r : resolutions) {
+            if (ImGui::Selectable(std::to_string(r).c_str(), r == renderer.shadowResolution))
+                renderer.shadowResolution = r;
+        }
+
+        ImGui::EndCombo();
+    }
+
+    ImGui::SliderFloat("Bias min", &renderer.shadowBiasMin, 0.0f, 0.01f, "%.4f");
+    ImGui::SliderFloat("Bias max", &renderer.shadowBiasMax, 0.0f, 0.05f, "%.4f");
+    ImGui::Checkbox("PCF (soft edges)", &renderer.pcf);
+    ImGui::Checkbox("Cull front faces", &renderer.shadowCullFront);
+
+    if (ImGui::TreeNode("Shadow map")) {
+        // GL textures start at the bottom row, ImGui images at the top, so flip V.
+        const float size = 200.0f * uiScale;
+        ImGui::Image(static_cast<ImTextureID>(renderer.shadowMapTexture()), ImVec2(size, size), ImVec2(0.0f, 1.0f), ImVec2(1.0f, 0.0f));
+        ImGui::TreePop();
+    }
+}
+
+static void displayPanel(GLFWwindow* window) {
+    displaySettings(window);
+
+    if (ImGui::Checkbox("VSync", &vsync))
+        glfwSwapInterval(vsync ? 1 : 0);
+
+    // Applied when the slider is released: rescaling while dragging would resize the slider under the mouse.
+    ImGui::SliderFloat("UI scale", &uiScale, 0.75f, 2.5f, "%.2f");
+
+    if (ImGui::IsItemDeactivatedAfterEdit())
+        applyUiScale(uiScale);
+}
+
+// Small overlay without a title bar, pinned to the bottom-left corner.
+static void statsOverlay(const Scene& scene, float margin) {
+    const ImGuiIO& io = ImGui::GetIO();
+    const ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize |
+                                   ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings |
+                                   ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
+
+    ImGui::SetNextWindowPos(ImVec2(margin, io.DisplaySize.y - margin), ImGuiCond_Always, ImVec2(0.0f, 1.0f));
+    ImGui::SetNextWindowBgAlpha(0.4f);
+
+    if (ImGui::Begin("Stats", &panels.stats, flags)) {
+        ImGui::Text("%.1f FPS (%.2f ms)", io.Framerate, 1000.0f / io.Framerate);
+        ImGui::Text("%zu entities", static_cast<size_t>(scene.registry.view<const Name>().size()));
+        ImGui::TextDisabled("Tab: toggle camera / UI mode");
+    }
+
+    ImGui::End();
+}
+
+void debugUI(GLFWwindow* window, Scene& scene, Renderer& renderer) {
+    if (ImGui::BeginMainMenuBar()) {
+        if (ImGui::BeginMenu("View")) {
+            ImGui::MenuItem("Hierarchy", nullptr, &panels.hierarchy);
+            ImGui::MenuItem("Inspector", nullptr, &panels.inspector);
+            ImGui::MenuItem("Renderer", nullptr, &panels.renderer);
+            ImGui::MenuItem("Display", nullptr, &panels.display);
+            ImGui::MenuItem("Stats", nullptr, &panels.stats);
+            ImGui::Separator();
+            ImGui::MenuItem("ImGui demo", nullptr, &panels.demo);
+            ImGui::EndMenu();
+        }
+
+        ImGui::EndMainMenuBar();
+    }
+
+    // Default layout: scene panels on the left, settings on the right, below the menu bar.
+    const ImVec2 screen = ImGui::GetIO().DisplaySize;
+    const float margin = 10.0f * uiScale;
+    const float top = ImGui::GetFrameHeight() + margin;
+    const float width = 340.0f * uiScale;
+    const float hierarchyHeight = screen.y * 0.35f;
+    const float right = screen.x - width - margin;
+
+    if (panels.hierarchy) {
+        if (beginPanel("Hierarchy", &panels.hierarchy, ImVec2(margin, top), ImVec2(width, hierarchyHeight))) {
+            for (entt::entity root : children(scene, entt::null))
+                entityNode(scene, root);
+        }
+
+        endPanel();
+    }
+
+    if (panels.inspector) {
+        if (beginPanel("Inspector", &panels.inspector, ImVec2(margin, top + hierarchyHeight + margin), ImVec2(width, screen.y * 0.4f)))
+            inspector(scene);
+
+        endPanel();
+    }
+
+    if (panels.renderer) {
+        if (beginPanel("Renderer", &panels.renderer, ImVec2(right, top), ImVec2(width, 0.0f)))
+            rendererPanel(renderer);
+
+        endPanel();
+    }
+
+    if (panels.display) {
+        if (beginPanel("Display", &panels.display, ImVec2(right, screen.y * 0.65f), ImVec2(width, 0.0f)))
+            displayPanel(window);
+
+        endPanel();
+    }
+
+    if (panels.stats)
+        statsOverlay(scene, margin);
+
+    if (panels.demo)
+        ImGui::ShowDemoWindow(&panels.demo);
 }

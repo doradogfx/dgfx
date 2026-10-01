@@ -10,8 +10,8 @@ void beginUI();
 void endUI(); // draws the UI on top of whatever is in the window
 void shutdownUI();
 
-// The dgfx debug window: stats, lights, display, render and post settings.
-void debugPanel(GLFWwindow* window, Scene& scene, Renderer& renderer);
+// The debug UI: menu bar, hierarchy, inspector, renderer and display settings, stats overlay.
+void debugUI(GLFWwindow* window, Scene& scene, Renderer& renderer);
 
 // Applies a window mode/resolution change picked in the panel. Call between frames, after glfwSwapBuffers.
 void applyDisplayChanges(GLFWwindow* window);

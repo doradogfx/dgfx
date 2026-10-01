@@ -17,7 +17,7 @@ A game engine written in C++ as a learning project: the goal is to understand ho
 - **Skybox**: cubemap environment rendered behind the scene (depth at the far plane, camera translation removed).
 - **Model loading** with Assimp (glTF, OBJ): meshes and their materials (diffuse/specular textures, double-sided surfaces), with a texture cache so shared images load once.
 - **Entities and components** with EnTT: parent/child transform hierarchy and a scene tree and inspector in the debug panel.
-- **Debug UI** with Dear ImGui: a live panel to tweak lights, rendering and display settings, with an FPS counter.
+- **Debug UI** with Dear ImGui: separate panels for the scene hierarchy, the selected entity's components, and rendering and display settings, plus a stats overlay.
 
 ## Controls
 
