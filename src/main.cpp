@@ -3,6 +3,7 @@
 
 #include "core/camera.h"
 #include "core/input.h"
+#include "game/game.h"
 #include "renderer/renderer.h"
 #include "scene/scene.h"
 #include "ui/ui.h"
@@ -58,11 +59,12 @@ int main() {
         Scene scene;
         Renderer renderer(width, height);
 
-        Camera camera;
-        camera.position = glm::vec3(0.0f, 2.0f, 6.0f);
-        camera.pitch = -15.0f;
+        Camera camera; // placed by the game every frame, or flown freely in fly mode
 
-        CameraInput input(window); // before initUI, so ImGui chains to its scroll callback
+        Game game(scene);
+        bool flyMode = false; // F1: debug fly camera instead of the game
+
+        Input input(window); // before initUI, so ImGui chains to its scroll callback
         initUI(window);
 
         double lastTime = glfwGetTime();
@@ -78,7 +80,16 @@ int main() {
             if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
                 glfwSetWindowShouldClose(window, GLFW_TRUE);
 
-            input.update(camera, dt);
+            input.update();
+
+            if (input.pressed(GLFW_KEY_F1))
+                flyMode = !flyMode;
+
+            if (flyMode)
+                flyCamera(camera, input, dt);
+            else
+                game.update(scene, camera, input, dt);
+
             scene.update(dt, camera);
 
             glfwGetFramebufferSize(window, &width, &height);

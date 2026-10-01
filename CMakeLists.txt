@@ -81,6 +81,7 @@ add_executable(dgfx
     src/main.cpp
     src/assets/model.cpp
     src/core/input.cpp
+    src/game/game.cpp
     src/renderer/cubemap.cpp
     src/renderer/framebuffer.cpp
     src/renderer/light.cpp

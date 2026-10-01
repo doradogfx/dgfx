@@ -30,13 +30,14 @@ static glm::mat4 modelMatrix(const Scene& scene, entt::entity entity, const Mode
 }
 
 // The sun as a camera: an orthographic box (parallel rays, no perspective) around the scene, looking along
-// the sun's direction. Fixed around the origin and sized for the 10x10 floor.
-static glm::mat4 sunLightSpace(glm::vec3 direction) {
+// the sun's direction, centered on `center`. Only what's inside the box casts or receives shadows.
+// ponytail: not snapped to shadow-map texels, so edges may shimmer while moving; snap if it shows.
+static glm::mat4 sunLightSpace(glm::vec3 direction, glm::vec3 center) {
     const glm::vec3 dir = glm::normalize(direction);
     // lookAt can't build a view when "up" is parallel to the view direction, i.e. a sun straight overhead.
     const glm::vec3 up = std::abs(dir.y) > 0.99f ? glm::vec3(0.0f, 0.0f, 1.0f) : Camera::worldUp;
-    const glm::mat4 view = glm::lookAt(-dir * 10.0f, glm::vec3(0.0f), up);
-    const glm::mat4 projection = glm::ortho(-8.0f, 8.0f, -8.0f, 8.0f, 0.1f, 20.0f);
+    const glm::mat4 view = glm::lookAt(center - dir * 10.0f, center, up);
+    const glm::mat4 projection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, 0.1f, 20.0f);
     return projection * view;
 }
 
@@ -104,7 +105,10 @@ void Renderer::render(Scene& scene, const Camera& camera, int width, int height)
         break;
     }
 
-    const glm::mat4 lightSpace = sunLightSpace(sun.direction);
+    // Shadows cover the area a few units ahead of the camera, so they follow it around the arena.
+    glm::vec3 shadowCenter = camera.position + camera.front() * 6.0f;
+    shadowCenter.y = 0.0f;
+    const glm::mat4 lightSpace = sunLightSpace(sun.direction, shadowCenter);
     const bool castShadows = shadows && sun.light.enabled;
 
     // Shadow pass: the scene's depth as the sun sees it. Lamps don't cast shadows.

@@ -1,5 +1,6 @@
 #include "ui/ui.h"
 
+#include "game/game.h"
 #include "renderer/renderer.h"
 #include "scene/scene.h"
 
@@ -239,6 +240,14 @@ static void inspector(Scene& scene) {
         ImGui::PopID();
     }
 
+    if (auto* player = registry.try_get<Player>(selected)) {
+        ImGui::PushID("player");
+        ImGui::SeparatorText("Player");
+        ImGui::DragFloat("Speed", &player->speed, 0.1f, 0.0f, 50.0f, "%.1f u/s");
+        ImGui::DragFloat("Jump speed", &player->jumpSpeed, 0.1f, 0.0f, 50.0f, "%.1f u/s");
+        ImGui::PopID();
+    }
+
     if (registry.all_of<MeshRenderer>(selected)) {
         ImGui::SeparatorText("Mesh renderer");
         ImGui::TextDisabled("Mesh with its own material");
@@ -346,7 +355,7 @@ static void statsOverlay(const Scene& scene, float margin) {
     if (ImGui::Begin("Stats", &panels.stats, flags)) {
         ImGui::Text("%.1f FPS (%.2f ms)", io.Framerate, 1000.0f / io.Framerate);
         ImGui::Text("%zu entities", static_cast<size_t>(scene.registry.view<const Name>().size()));
-        ImGui::TextDisabled("Tab: toggle camera / UI mode");
+        ImGui::TextDisabled("Tab: UI mode | F1: fly camera");
     }
 
     ImGui::End();

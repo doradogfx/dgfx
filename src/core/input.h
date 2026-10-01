@@ -2,28 +2,45 @@
 
 #include "core/camera.h"
 
+#include <glm/glm.hpp>
+
+#include <array>
+
 struct GLFWwindow;
 
-// Fly-camera controls. Two modes: camera mode (cursor hidden and locked to the window, so the mouse can turn
-// forever without hitting the screen edge) and UI mode (normal cursor, for the ImGui panel). Tab toggles them.
-class CameraInput {
+// Mouse and keyboard state for the frame. Two modes: captured (cursor hidden and locked to the window, so the
+// mouse can turn forever without hitting the screen edge) and UI mode (normal cursor, for the ImGui panels).
+// Tab toggles them.
+class Input {
 public:
     // Installs the scroll callback. Create before initUI(): ImGui chains to callbacks that already exist.
-    explicit CameraInput(GLFWwindow* window);
+    explicit Input(GLFWwindow* window);
 
-    void update(Camera& camera, float dt);
+    void update();
+
+    // Both are false while ImGui has the keyboard (typing in a text field).
+    bool down(int key) const;
+    bool pressed(int key) const; // went down this frame
+
+    glm::vec2 look{0.0f}; // mouse movement in pixels this frame, 0 when not captured
+    float scroll = 0.0f;  // wheel notches this frame, 0 over ImGui
 
     // The window's user pointer points at this object, so it must not be copied or moved.
-    CameraInput(const CameraInput&) = delete;
-    CameraInput& operator=(const CameraInput&) = delete;
+    Input(const Input&) = delete;
+    Input& operator=(const Input&) = delete;
 
 private:
     void setCaptured(bool value);
 
     GLFWwindow* window;
     bool captured = false;
-    bool tabWasDown = false;
-    double lastX = 0.0; // mouse look works on how far the cursor moved since last frame
+    bool keyboardFree = true;
+    std::array<bool, 512> keys{}; // GLFW_KEY_LAST is 348
+    std::array<bool, 512> lastKeys{};
+    double lastX = 0.0;
     double lastY = 0.0;
-    double scroll = 0.0; // accumulated by the scroll callback, consumed by update()
+    double wheel = 0.0; // accumulated by the scroll callback, consumed by update()
 };
+
+// Free-flying debug camera: mouse look, WASD, Space/Ctrl up/down, Shift faster, scroll zoom.
+void flyCamera(Camera& camera, const Input& input, float dt);

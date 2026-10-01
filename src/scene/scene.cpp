@@ -61,7 +61,7 @@ Scene::Scene()
         registry.emplace<MeshRenderer>(create(name, transform), &mesh, material);
     };
 
-    addMesh("Floor", cube, rubber({0.6f, 0.6f, 0.6f}), {.position = {0.0f, -0.55f, 0.0f}, .scale = {10.0f, 0.1f, 10.0f}}); // top surface at y = -0.5
+    addMesh("Floor", cube, rubber({0.6f, 0.6f, 0.6f}), {.position = {0.0f, -0.55f, 0.0f}, .scale = {40.0f, 0.1f, 40.0f}}); // top surface at y = -0.5
     addMesh("Orange sphere", sphere, plastic({1.0f, 0.5f, 0.3f}), {.position = {0.0f, 0.0f, 0.0f}});
     addMesh("Blue sphere", sphere, plastic({0.3f, 0.5f, 1.0f}, 512.0f), {.position = {2.0f, 0.0f, -1.0f}, .rotation = {0.0f, 30.0f, 0.0f}});
     addMesh("Green sphere", sphere, rubber({0.4f, 0.9f, 0.4f}), {.position = {-1.5f, -0.25f, 1.0f}, .scale = glm::vec3(0.5f)});
@@ -71,10 +71,6 @@ Scene::Scene()
     addMesh("Crate", cube, crate, {.position = {-3.2f, 0.0f, 0.6f}, .rotation = {0.0f, 10.0f, 0.0f}});
     addMesh("Chrome sphere", sphere, chrome, {.position = {3.3f, 0.0f, 0.8f}});
     addMesh("Glass sphere", sphere, glass, {.position = {-0.4f, 0.0f, -2.4f}});
-
-    // "Shiba" by zixisun02, CC-BY-4.0 (see models/shiba/license.txt).
-    const entt::entity dog = create("Shiba", {.position = {3.6f, -0.5f, -1.6f}, .rotation = {0.0f, -30.0f, 0.0f}, .scale = glm::vec3(shiba.fitScale(1.2f))});
-    registry.emplace<ModelRenderer>(dog, &shiba);
 
     DirLight sun;
     sun.ambient = glm::vec3(0.01f);

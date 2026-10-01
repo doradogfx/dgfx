@@ -4,7 +4,7 @@
 #include <GLFW/glfw3.h>
 #include <imgui.h>
 
-CameraInput::CameraInput(GLFWwindow* window) : window(window) {
+Input::Input(GLFWwindow* window) : window(window) {
     // Raw motion skips the OS pointer acceleration, so the same hand movement always turns the same amount.
     if (glfwRawMouseMotionSupported())
         glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
@@ -13,13 +13,13 @@ CameraInput::CameraInput(GLFWwindow* window) : window(window) {
     // pointer is how the capture-less callback finds this object.
     glfwSetWindowUserPointer(window, this);
     glfwSetScrollCallback(window, [](GLFWwindow* w, double, double yOffset) {
-        static_cast<CameraInput*>(glfwGetWindowUserPointer(w))->scroll += yOffset;
+        static_cast<Input*>(glfwGetWindowUserPointer(w))->wheel += yOffset;
     });
 
     setCaptured(true);
 }
 
-void CameraInput::setCaptured(bool value) {
+void Input::setCaptured(bool value) {
     captured = value;
     glfwSetInputMode(window, GLFW_CURSOR, captured ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
 
@@ -27,22 +27,30 @@ void CameraInput::setCaptured(bool value) {
     glfwGetCursorPos(window, &lastX, &lastY);
 }
 
-void CameraInput::update(Camera& camera, float dt) {
-    // io.WantCapture* say whether ImGui is using the mouse/keyboard (hovering or typing in the panel).
+bool Input::down(int key) const {
+    return keyboardFree && keys[key];
+}
+
+bool Input::pressed(int key) const {
+    return keyboardFree && keys[key] && !lastKeys[key];
+}
+
+void Input::update() {
+    // io.WantCapture* say whether ImGui is using the mouse/keyboard (hovering or typing in a panel).
     // They were updated by last frame's ImGui::NewFrame, which is recent enough.
     ImGuiIO& io = ImGui::GetIO();
+    keyboardFree = !io.WantCaptureKeyboard;
 
-    // Tab switches modes. Act only on the frame it goes down, or holding it would toggle every frame.
-    // Not while typing in a text field, where Tab belongs to ImGui.
-    const bool tabDown = glfwGetKey(window, GLFW_KEY_TAB) == GLFW_PRESS;
+    lastKeys = keys;
 
-    if (tabDown && !tabWasDown && !io.WantCaptureKeyboard)
+    for (int key = GLFW_KEY_SPACE; key <= GLFW_KEY_LAST; key++)
+        keys[key] = glfwGetKey(window, key) == GLFW_PRESS;
+
+    if (pressed(GLFW_KEY_TAB))
         setCaptured(!captured);
 
-    tabWasDown = tabDown;
-
-    // Give the cursor back when switching to another window. In UI mode, a click that isn't on the panel
-    // goes back to camera mode.
+    // Give the cursor back when switching to another window. In UI mode, a click that isn't on a panel
+    // goes back to captured mode.
     if (captured && !glfwGetWindowAttrib(window, GLFW_FOCUSED))
         setCaptured(false);
     else if (!captured && glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS && !io.WantCaptureMouse)
@@ -54,45 +62,41 @@ void CameraInput::update(Camera& camera, float dt) {
     else
         io.ConfigFlags &= ~ImGuiConfigFlags_NoMouse;
 
-    // Mouse look. Screen Y grows downward, so moving the mouse up gives a negative dy, which should tilt up.
-    const float sensitivity = 0.1f; // degrees per pixel
+    // Screen Y grows downward, so moving the mouse up gives a negative y.
     double x, y;
     glfwGetCursorPos(window, &x, &y);
-
-    if (captured)
-        camera.turn(static_cast<float>(x - lastX) * sensitivity, static_cast<float>(lastY - y) * sensitivity);
-
+    look = captured ? glm::vec2(x - lastX, y - lastY) : glm::vec2(0.0f);
     lastX = x;
     lastY = y;
 
-    // 2 degrees of field of view per wheel notch. Over the panel, the scroll is ImGui's.
-    if (!io.WantCaptureMouse)
-        camera.zoom(static_cast<float>(scroll) * 2.0f);
+    // Over a panel, the scroll is ImGui's.
+    scroll = io.WantCaptureMouse ? 0.0f : static_cast<float>(wheel);
+    wheel = 0.0;
+}
 
-    scroll = 0.0;
-
-    // Skipped while typing in the panel, so text input doesn't fly the camera around.
-    if (io.WantCaptureKeyboard)
-        return;
+void flyCamera(Camera& camera, const Input& input, float dt) {
+    const float sensitivity = 0.1f; // degrees per pixel
+    camera.turn(input.look.x * sensitivity, -input.look.y * sensitivity);
+    camera.zoom(input.scroll * 2.0f); // 2 degrees of field of view per wheel notch
 
     float speed = 2.5f * dt; // units per second
 
-    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
+    if (input.down(GLFW_KEY_LEFT_SHIFT))
         speed *= 4.0f;
 
     const glm::vec3 front = camera.front();
     const glm::vec3 right = camera.right();
 
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+    if (input.down(GLFW_KEY_W))
         camera.position += front * speed;
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+    if (input.down(GLFW_KEY_S))
         camera.position -= front * speed;
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+    if (input.down(GLFW_KEY_D))
         camera.position += right * speed;
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+    if (input.down(GLFW_KEY_A))
         camera.position -= right * speed;
-    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
+    if (input.down(GLFW_KEY_SPACE))
         camera.position += Camera::worldUp * speed;
-    if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
+    if (input.down(GLFW_KEY_LEFT_CONTROL))
         camera.position -= Camera::worldUp * speed;
 }

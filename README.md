@@ -4,7 +4,14 @@
 
 A game engine written in C++ as a learning project: the goal is to understand how game engines are designed and implemented by building one step by step, one feature at a time.
 
-## Features
+## Game
+
+A simplified 3D survivors-like built on the engine.
+
+- **Player**: a player that runs relative to the camera, turns to face where it's going, and jumps with gravity.
+- **Third-person camera** orbiting the player, with adjustable distance.
+
+## Engine features
 
 - **OpenGL 4.6 core** rendering on a GLFW window, with vsync and resize/minimize handling.
 - **Shaders** loaded from files, compiled and linked, with error reporting and typed uniform setters.
@@ -23,14 +30,16 @@ A game engine written in C++ as a learning project: the goal is to understand ho
 
 | Input | Action |
 |---|---|
-| Mouse | Look around |
-| W / A / S / D | Move forward / left / back / right |
-| Space / Left Ctrl | Move up / down |
-| Left Shift | Move faster |
-| Scroll wheel | Zoom |
-| Tab | Toggle camera mode (cursor captured) / UI mode (cursor free, to use the panel) |
-| Click outside the panel | Back to camera mode (the cursor is also released when the window loses focus) |
+| Mouse | Orbit the camera |
+| W / A / S / D | Run forward / left / back / right |
+| Space | Jump |
+| Scroll wheel | Camera distance |
+| F1 | Toggle the debug fly camera |
+| Tab | Toggle captured mode (cursor hidden) / UI mode (cursor free, to use the panels) |
+| Click outside the panels | Back to captured mode (the cursor is also released when the window loses focus) |
 | Esc | Quit |
+
+Fly camera: mouse to look, W / A / S / D to move, Space / Left Ctrl up / down, Left Shift faster, scroll wheel to zoom.
 
 ## External libraries
 
