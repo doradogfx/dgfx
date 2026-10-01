@@ -22,7 +22,16 @@ int main() {
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_SRGB_CAPABLE, GLFW_TRUE); // needed for GL_FRAMEBUFFER_SRGB on the default framebuffer
 
-    GLFWwindow* window = glfwCreateWindow(1280, 720, "dgfx", nullptr, nullptr);
+    // Open at 80% of the primary monitor's work area (the desktop minus the taskbar), centered, so the
+    // window suits any monitor size.
+    int areaX, areaY, areaWidth, areaHeight;
+    glfwGetMonitorWorkarea(glfwGetPrimaryMonitor(), &areaX, &areaY, &areaWidth, &areaHeight);
+    const int windowWidth = areaWidth * 4 / 5;
+    const int windowHeight = areaHeight * 4 / 5;
+    glfwWindowHint(GLFW_POSITION_X, areaX + (areaWidth - windowWidth) / 2);
+    glfwWindowHint(GLFW_POSITION_Y, areaY + (areaHeight - windowHeight) / 2);
+
+    GLFWwindow* window = glfwCreateWindow(windowWidth, windowHeight, "dgfx", nullptr, nullptr);
 
     if (!window) {
         glfwTerminate();

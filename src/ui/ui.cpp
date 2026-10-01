@@ -10,11 +10,23 @@
 #include <imgui_impl_opengl3.h>
 
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <string>
 #include <vector>
 
 static bool vsync = true;
+static float uiScale = 1.0f;
+
+// Scales text and every padding/spacing/size. ScaleAllSizes multiplies the current values,
+// so it's applied to a fresh default style each time instead of compounding.
+static void applyUiScale(float scale) {
+    ImGuiStyle style;
+    ImGui::StyleColorsDark(&style);
+    style.ScaleAllSizes(scale);
+    style.FontScaleMain = scale;
+    ImGui::GetStyle() = style;
+}
 
 struct Resolution {
     int width;
@@ -113,6 +125,12 @@ void initUI(GLFWwindow* window) {
     ImGui::CreateContext();
     ImGui_ImplGlfw_InitForOpenGL(window, true); // true = install its callbacks, chaining to existing ones
     ImGui_ImplOpenGL3_Init("#version 460");
+
+    // Starting scale from the monitor: 1.0 for 1080p, ~1.25 for 1440p, ~2.0 for 4K, in 0.25 steps.
+    int x, y, width, height;
+    glfwGetMonitorWorkarea(glfwGetPrimaryMonitor(), &x, &y, &width, &height);
+    uiScale = std::max(1.0f, std::round(height / 1080.0f * 4.0f) / 4.0f);
+    applyUiScale(uiScale);
 }
 
 void beginUI() {
@@ -237,7 +255,7 @@ void debugPanel(GLFWwindow* window, Scene& scene, Renderer& renderer) {
     const ImGuiIO& io = ImGui::GetIO();
 
     ImGui::SetNextWindowPos(ImVec2(10.0f, 10.0f), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(340.0f, 0.0f), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(340.0f * uiScale, 0.0f), ImGuiCond_FirstUseEver);
     ImGui::Begin("dgfx");
 
     // Negative width = the panel's width minus this much, which leaves room for labels at any panel size.
@@ -280,7 +298,8 @@ void debugPanel(GLFWwindow* window, Scene& scene, Renderer& renderer) {
 
         if (ImGui::TreeNode("Shadow map")) {
             // GL textures start at the bottom row, ImGui images at the top, so flip V.
-            ImGui::Image(static_cast<ImTextureID>(renderer.shadowMapTexture()), ImVec2(200.0f, 200.0f), ImVec2(0.0f, 1.0f), ImVec2(1.0f, 0.0f));
+            const float size = 200.0f * uiScale;
+            ImGui::Image(static_cast<ImTextureID>(renderer.shadowMapTexture()), ImVec2(size, size), ImVec2(0.0f, 1.0f), ImVec2(1.0f, 0.0f));
             ImGui::TreePop();
         }
     }
@@ -302,6 +321,12 @@ void debugPanel(GLFWwindow* window, Scene& scene, Renderer& renderer) {
     ImGui::PushID("display");
     if (ImGui::CollapsingHeader("Display")) {
         displaySettings(window);
+
+        // Applied when the slider is released: rescaling while dragging would resize the slider under the mouse.
+        ImGui::SliderFloat("UI scale", &uiScale, 0.75f, 2.5f, "%.2f");
+
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            applyUiScale(uiScale);
 
         if (ImGui::Checkbox("VSync", &vsync))
             glfwSwapInterval(vsync ? 1 : 0);
