@@ -1,6 +1,7 @@
 #pragma once
 
 #include "assets/model.h"
+#include "core/camera.h"
 #include "renderer/cubemap.h"
 #include "renderer/light.h"
 #include "renderer/mesh.h"
@@ -36,9 +37,12 @@ struct Scene {
 
     // Local transform combined with every parent's, i.e. where the entity is in the world.
     glm::mat4 worldMatrix(entt::entity entity) const;
+    glm::vec3 position(entt::entity entity) const;
+    // The direction the entity points: its local -Z axis in world space.
+    glm::vec3 forward(entt::entity entity) const;
 
-    // Per-frame systems that change the scene (rotators).
-    void update(float dt);
+    // Per-frame systems that change the scene (rotators, entities following the camera).
+    void update(float dt, const Camera& camera);
 
     // Components point into this scene's own meshes and textures, so a copy would point back into the original.
     Scene(const Scene&) = delete;

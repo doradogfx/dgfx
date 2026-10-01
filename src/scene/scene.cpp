@@ -2,6 +2,8 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 
+#include <cmath>
+
 // Colors picked by eye are sRGB (gamma-encoded); lighting math needs linear values.
 // 2.2 approximates the exact sRGB curve closely enough for picked colors.
 static glm::vec3 srgb(glm::vec3 color) {
@@ -16,6 +18,13 @@ static Material plastic(glm::vec3 color, float shininess = 128.0f) {
 // Rubber: the surface color, almost no highlight, and what little there is is wide and dull.
 static Material rubber(glm::vec3 color) {
     return {nullptr, nullptr, srgb(color), glm::vec3(0.1f), 8.0f};
+}
+
+// Euler rotation (degrees) that points an entity's -Z axis along `direction`. Inverts the transform's
+// yaw-then-pitch rotation of (0, 0, -1), which gives (-cos p sin y, sin p, -cos p cos y).
+static glm::vec3 aimRotation(glm::vec3 direction) {
+    const glm::vec3 d = glm::normalize(direction);
+    return {glm::degrees(std::asin(d.y)), glm::degrees(std::atan2(-d.x, -d.z)), 0.0f};
 }
 
 static PointLight coloredLight(glm::vec3 color) {
@@ -69,9 +78,9 @@ Scene::Scene()
 
     DirLight sun;
     sun.ambient = glm::vec3(0.01f);
-    sun.direction = {-0.6f, -1.0f, -0.4f}; // angled, so shadows are long enough to see
     sun.diffuse = srgb({0.45f, 0.42f, 0.38f}); // slightly warm, still dim enough for the point lights to stand out
-    registry.emplace<DirLight>(create("Sun"), sun);
+    // Angled, so shadows are long enough to see.
+    registry.emplace<DirLight>(create("Sun", {.rotation = aimRotation({-0.6f, -1.0f, -0.4f})}), sun);
 
     // The point lights circle the scene because their parent spins, not because the renderer moves them.
     const entt::entity orbit = create("Light orbit");
@@ -82,7 +91,9 @@ Scene::Scene()
     registry.emplace<PointLight>(create("Blue light", {.position = {-1.5f, 1.2f, -2.0f}, .parent = orbit}), coloredLight({0.2f, 0.3f, 1.0f}));
     registry.emplace<PointLight>(create("White light", {.position = {2.0f, 1.5f, -2.0f}, .parent = orbit}), coloredLight({1.0f, 1.0f, 1.0f}));
 
-    registry.emplace<SpotLight>(create("Flashlight")); // follows the camera, off by default
+    const entt::entity flashlight = create("Flashlight"); // off by default
+    registry.emplace<SpotLight>(flashlight);
+    registry.emplace<FollowCamera>(flashlight);
 }
 
 entt::entity Scene::create(const std::string& name, const Transform& transform) {
@@ -106,9 +117,22 @@ glm::mat4 Scene::worldMatrix(entt::entity entity) const {
     return t.parent == entt::null ? local : worldMatrix(t.parent) * local;
 }
 
-void Scene::update(float dt) {
+glm::vec3 Scene::position(entt::entity entity) const {
+    return glm::vec3(worldMatrix(entity)[3]); // translation column
+}
+
+glm::vec3 Scene::forward(entt::entity entity) const {
+    return glm::normalize(glm::mat3(worldMatrix(entity)) * glm::vec3(0.0f, 0.0f, -1.0f));
+}
+
+void Scene::update(float dt, const Camera& camera) {
     for (auto [entity, rotator, transform] : registry.view<Rotator, Transform>().each()) {
         if (rotator.enabled)
             transform.rotation = glm::mod(transform.rotation + rotator.degreesPerSecond * dt, glm::vec3(360.0f));
+    }
+
+    for (auto [entity, transform] : registry.view<Transform, FollowCamera>().each()) {
+        transform.position = camera.position;
+        transform.rotation = aimRotation(camera.front());
     }
 }

@@ -70,7 +70,7 @@ int main() {
                 glfwSetWindowShouldClose(window, GLFW_TRUE);
 
             input.update(camera, dt);
-            scene.update(dt);
+            scene.update(dt, camera);
 
             glfwGetFramebufferSize(window, &width, &height);
 

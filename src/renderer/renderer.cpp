@@ -31,8 +31,8 @@ static glm::mat4 modelMatrix(const Scene& scene, entt::entity entity, const Mode
 
 // The sun as a camera: an orthographic box (parallel rays, no perspective) around the scene, looking along
 // the sun's direction. Fixed around the origin and sized for the 10x10 floor.
-static glm::mat4 sunLightSpace(const DirLight& sun) {
-    const glm::vec3 dir = glm::normalize(sun.direction);
+static glm::mat4 sunLightSpace(glm::vec3 direction) {
+    const glm::vec3 dir = glm::normalize(direction);
     // lookAt can't build a view when "up" is parallel to the view direction, i.e. a sun straight overhead.
     const glm::vec3 up = std::abs(dir.y) > 0.99f ? glm::vec3(0.0f, 0.0f, 1.0f) : Camera::worldUp;
     const glm::mat4 view = glm::lookAt(-dir * 10.0f, glm::vec3(0.0f), up);
@@ -79,37 +79,33 @@ void Renderer::render(Scene& scene, const Camera& camera, int width, int height)
 
     // Gather the lights from their entities. The shader takes one sun, up to kMaxPointLights point lights
     // and one spot; extra ones are ignored. A missing light is sent disabled.
-    DirLight sun;
-    sun.enabled = false;
+    // Position and direction come from each light's entity transform.
+    WorldDirLight sun;
+    sun.light.enabled = false;
 
     for (auto [entity, light] : registry.view<DirLight>().each()) {
         if (light.enabled) {
-            sun = light;
+            sun = {light, scene.forward(entity)};
             break;
         }
     }
 
-    std::vector<PointLight> points;
+    std::vector<WorldPointLight> points;
 
     for (auto [entity, light] : registry.view<PointLight>().each()) {
-        if (light.enabled && points.size() < kMaxPointLights) {
-            points.push_back(light);
-            points.back().position = glm::vec3(scene.worldMatrix(entity)[3]); // translation column
-        }
+        if (light.enabled && points.size() < kMaxPointLights)
+            points.push_back({light, scene.position(entity)});
     }
 
-    // The flashlight follows the camera.
-    SpotLight spot;
+    WorldSpotLight spot;
 
     for (auto [entity, light] : registry.view<SpotLight>().each()) {
-        spot = light;
-        spot.position = camera.position;
-        spot.direction = camera.front();
+        spot = {light, scene.position(entity), scene.forward(entity)};
         break;
     }
 
-    const glm::mat4 lightSpace = sunLightSpace(sun);
-    const bool castShadows = shadows && sun.enabled;
+    const glm::mat4 lightSpace = sunLightSpace(sun.direction);
+    const bool castShadows = shadows && sun.light.enabled;
 
     // Shadow pass: the scene's depth as the sun sees it. Lamps don't cast shadows.
     if (castShadows) {
@@ -191,9 +187,9 @@ void Renderer::render(Scene& scene, const Camera& camera, int width, int height)
     lamp.setMat4("projection", projection);
     lamp.setMat4("view", view);
 
-    for (const PointLight& p : points) {
+    for (const WorldPointLight& p : points) {
         lamp.setMat4("model", glm::scale(glm::translate(glm::mat4(1.0f), p.position), glm::vec3(0.15f)));
-        lamp.setVec3("lightColor", p.diffuse);
+        lamp.setVec3("lightColor", p.light.diffuse);
         scene.sphere.draw();
     }
 

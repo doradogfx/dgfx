@@ -9,10 +9,12 @@
 // Must match MAX_POINT_LIGHTS in lit.frag.
 constexpr int kMaxPointLights = 4;
 
+// Light components only describe the light. Where it is and where it points come from the entity's
+// transform: position, and its local -Z axis as the direction.
+
 // The sun: parallel rays, no position, no falloff.
 struct DirLight {
     bool enabled = true;
-    glm::vec3 direction{-0.2f, -1.0f, -0.3f};
     glm::vec3 ambient{0.05f};
     glm::vec3 diffuse{0.3f};
     glm::vec3 specular{0.3f};
@@ -21,7 +23,6 @@ struct DirLight {
 // A bulb: shines everywhere from a position, fading with distance as 1 / (constant + linear*d + quadratic*d^2).
 struct PointLight {
     bool enabled = true;
-    glm::vec3 position{0.0f}; // world space, filled in from the entity's transform when rendering
     glm::vec3 ambient{0.0f};
     glm::vec3 diffuse{1.0f};
     glm::vec3 specular{1.0f};
@@ -33,8 +34,6 @@ struct PointLight {
 // A point light limited to a cone, with a soft edge between the inner and outer angle (degrees).
 struct SpotLight {
     bool enabled = false;
-    glm::vec3 position{0.0f}; // world space, filled in when rendering (the flashlight follows the camera)
-    glm::vec3 direction{0.0f, 0.0f, -1.0f};
     glm::vec3 ambient{0.0f};
     glm::vec3 diffuse{1.0f};
     glm::vec3 specular{1.0f};
@@ -57,8 +56,25 @@ inline constexpr AttenuationPreset kAttenuationPresets[] = {
     {"32", 0.14f, 0.07f}, {"50", 0.09f, 0.032f}, {"100", 0.045f, 0.0075f},
 };
 
+// A light placed in the world for this frame: the component plus its world-space position/direction.
+struct WorldDirLight {
+    DirLight light;
+    glm::vec3 direction{0.0f, -1.0f, 0.0f};
+};
+
+struct WorldPointLight {
+    PointLight light;
+    glm::vec3 position{0.0f};
+};
+
+struct WorldSpotLight {
+    SpotLight light;
+    glm::vec3 position{0.0f};
+    glm::vec3 direction{0.0f, 0.0f, -1.0f};
+};
+
 // Sends all lights to the shader. Only enabled point lights are sent, packed at the front of the array.
-void setLights(const Shader& shader, const DirLight& dir, std::span<const PointLight> points, const SpotLight& spot);
+void setLights(const Shader& shader, const WorldDirLight& dir, std::span<const WorldPointLight> points, const WorldSpotLight& spot);
 
 // ImGui widgets for editing a light.
 void lightUI(DirLight& light);
