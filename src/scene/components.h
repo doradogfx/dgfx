@@ -1,8 +1,8 @@
 #pragma once
 
-#include "material.h"
-#include "mesh.h"
-#include "model.h"
+#include "assets/model.h"
+#include "renderer/material.h"
+#include "renderer/mesh.h"
 
 #include <entt/entt.hpp>
 #include <glm/glm.hpp>

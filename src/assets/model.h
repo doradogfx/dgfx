@@ -1,8 +1,8 @@
 #pragma once
 
-#include "material.h"
-#include "mesh.h"
-#include "texture.h"
+#include "renderer/material.h"
+#include "renderer/mesh.h"
+#include "renderer/texture.h"
 
 #include <glm/glm.hpp>
 

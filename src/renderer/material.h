@@ -1,6 +1,6 @@
 #pragma once
 
-#include "texture.h"
+#include "renderer/texture.h"
 
 #include <glm/glm.hpp>
 

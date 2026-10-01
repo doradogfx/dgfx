@@ -1,10 +1,10 @@
 #pragma once
 
-#include "camera.h"
-#include "framebuffer.h"
-#include "scene.h"
-#include "shader.h"
-#include "shadowmap.h"
+#include "core/camera.h"
+#include "renderer/framebuffer.h"
+#include "renderer/shader.h"
+#include "renderer/shadowmap.h"
+#include "scene/scene.h"
 
 class Renderer {
 public:

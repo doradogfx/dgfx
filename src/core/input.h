@@ -1,6 +1,6 @@
 #pragma once
 
-#include "camera.h"
+#include "core/camera.h"
 
 struct GLFWwindow;
 

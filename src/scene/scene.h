@@ -1,11 +1,11 @@
 #pragma once
 
-#include "components.h"
-#include "cubemap.h"
-#include "light.h"
-#include "mesh.h"
-#include "model.h"
-#include "texture.h"
+#include "assets/model.h"
+#include "renderer/cubemap.h"
+#include "renderer/light.h"
+#include "renderer/mesh.h"
+#include "renderer/texture.h"
+#include "scene/components.h"
 
 #include <entt/entt.hpp>
 #include <glm/glm.hpp>

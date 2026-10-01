@@ -1,11 +1,11 @@
 #include <glad/glad.h> // must come before GLFW so GLFW doesn't pull in the system GL header
 #include <GLFW/glfw3.h>
 
-#include "camera.h"
-#include "input.h"
-#include "renderer.h"
-#include "scene.h"
-#include "ui.h"
+#include "core/camera.h"
+#include "core/input.h"
+#include "renderer/renderer.h"
+#include "scene/scene.h"
+#include "ui/ui.h"
 
 #include <cstdio>
 

@@ -78,21 +78,23 @@ add_library(glad STATIC external/glad/src/glad.c)
 target_include_directories(glad PUBLIC external/glad/include)
 
 add_executable(dgfx
-    src/cubemap.cpp
-    src/framebuffer.cpp
-    src/input.cpp
-    src/light.cpp
     src/main.cpp
-    src/mesh.cpp
-    src/model.cpp
-    src/renderer.cpp
-    src/scene.cpp
-    src/shadowmap.cpp
-    src/shader.cpp
-    src/texture.cpp
-    src/ui.cpp)
+    src/assets/model.cpp
+    src/core/input.cpp
+    src/renderer/cubemap.cpp
+    src/renderer/framebuffer.cpp
+    src/renderer/light.cpp
+    src/renderer/mesh.cpp
+    src/renderer/renderer.cpp
+    src/renderer/shader.cpp
+    src/renderer/shadowmap.cpp
+    src/renderer/texture.cpp
+    src/scene/scene.cpp
+    src/ui/ui.cpp)
 target_link_libraries(dgfx PRIVATE glfw glad glm::glm imgui assimp::assimp EnTT::EnTT)
-target_include_directories(dgfx PRIVATE ${stb_SOURCE_DIR})
+
+# src/ is the include root: project headers are included by folder, e.g. "renderer/mesh.h".
+target_include_directories(dgfx PRIVATE src ${stb_SOURCE_DIR})
 
 # Shaders, textures and models are loaded from the source tree, so the exe finds them regardless of its working directory.
 # ponytail: absolute source path, copy them next to the exe if it ever ships without the repo.

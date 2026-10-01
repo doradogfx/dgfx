@@ -1,4 +1,4 @@
-#include "model.h"
+#include "assets/model.h"
 
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>

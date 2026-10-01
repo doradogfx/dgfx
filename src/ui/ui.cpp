@@ -1,7 +1,7 @@
-#include "ui.h"
+#include "ui/ui.h"
 
-#include "renderer.h"
-#include "scene.h"
+#include "renderer/renderer.h"
+#include "scene/scene.h"
 
 #include <GLFW/glfw3.h>
 #include <glm/gtc/type_ptr.hpp>

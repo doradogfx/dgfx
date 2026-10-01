@@ -1,4 +1,4 @@
-#include "cubemap.h"
+#include "renderer/cubemap.h"
 
 #include <stb_image.h>
 
