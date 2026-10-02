@@ -90,6 +90,7 @@ add_executable(dgfx
     src/renderer/shader.cpp
     src/renderer/shadowmap.cpp
     src/renderer/texture.cpp
+    src/scene/demo.cpp
     src/scene/scene.cpp
     src/ui/ui.cpp)
 target_link_libraries(dgfx PRIVATE glfw glad glm::glm imgui assimp::assimp EnTT::EnTT)

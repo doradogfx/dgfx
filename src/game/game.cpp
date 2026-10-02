@@ -13,6 +13,14 @@ static constexpr float kPlayerRadius = 0.4f;
 static constexpr float kEnemyScale = 0.8f;
 
 Game::Game(Scene& scene) {
+    scene.registry.emplace<MeshRenderer>(scene.create("Floor", {.position = {0.0f, kGroundHeight - 0.05f, 0.0f}, .scale = {40.0f, 0.1f, 40.0f}}), &scene.cube, rubber({0.6f, 0.6f, 0.6f}));
+
+    // Only the sun lights this scene, so more ambient than the demo's.
+    DirLight sun;
+    sun.ambient = srgb(glm::vec3(0.25f));
+    sun.diffuse = srgb({0.85f, 0.8f, 0.7f});
+    scene.registry.emplace<DirLight>(scene.create("Sun", {.rotation = aimRotation({-0.6f, -1.0f, -0.4f})}), sun);
+
     // "Shiba" by zixisun02, CC-BY-4.0 (see models/shiba/license.txt).
     player = scene.create("Player", {.position = {0.0f, kGroundHeight, 5.0f}});
     scene.registry.emplace<Player>(player);

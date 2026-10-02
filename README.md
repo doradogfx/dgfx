@@ -36,6 +36,7 @@ A simplified 3D survivors-like built on the engine.
 | Space | Jump |
 | Scroll wheel | Camera distance |
 | F1 | Toggle the debug fly camera |
+| F2 | Switch between the game scene and the engine demo scene (fly camera only) |
 | Tab | Toggle captured mode (cursor hidden) / UI mode (cursor free, to use the panels) |
 | Click outside the panels | Back to captured mode (the cursor is also released when the window loses focus) |
 | Esc | Quit |

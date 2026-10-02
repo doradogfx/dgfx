@@ -386,7 +386,7 @@ static void statsOverlay(const Scene& scene, const Renderer& renderer, float mar
         for (auto [entity, health, player] : scene.registry.view<const Health, const Player>().each())
             ImGui::Text("Health %.0f / %.0f", health.current, health.max);
 
-        ImGui::TextDisabled("Tab: UI mode | F1: fly camera");
+        ImGui::TextDisabled("Tab: UI mode | F1: fly camera | F2: switch scene");
     }
 
     ImGui::End();

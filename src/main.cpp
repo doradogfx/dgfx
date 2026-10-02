@@ -5,10 +5,12 @@
 #include "core/input.h"
 #include "game/game.h"
 #include "renderer/renderer.h"
+#include "scene/demo.h"
 #include "scene/scene.h"
 #include "ui/ui.h"
 
 #include <cstdio>
+#include <optional>
 
 int main() {
     glfwSetErrorCallback([](int code, const char* desc) {
@@ -59,10 +61,12 @@ int main() {
         Scene scene;
         Renderer renderer(width, height);
 
-        Camera camera; // placed by the game every frame, or flown freely in fly mode
+        Camera camera;
 
-        Game game(scene);
-        bool flyMode = false; // F1: debug fly camera instead of the game
+        // F2 switches between the game level (a Game exists) and the engine demo (none, so always fly camera).
+        std::optional<Game> game;
+        game.emplace(scene);
+        bool flyMode = false;
 
         Input input(window); // before initUI, so ImGui chains to its scroll callback
         initUI(window);
@@ -85,10 +89,24 @@ int main() {
             if (input.pressed(GLFW_KEY_F1))
                 flyMode = !flyMode;
 
-            if (flyMode)
+            if (input.pressed(GLFW_KEY_F2)) {
+                scene.registry.clear();
+                camera = Camera();
+
+                if (game) {
+                    game.reset();
+                    buildDemo(scene);
+                    camera.position = glm::vec3(0.0f, 2.0f, 6.0f);
+                    camera.pitch = -15.0f;
+                } else {
+                    game.emplace(scene);
+                }
+            }
+
+            if (flyMode || !game)
                 flyCamera(camera, input, dt);
             else
-                game.update(scene, camera, input, dt);
+                game->update(scene, camera, input, dt);
 
             scene.update(dt, camera);
 

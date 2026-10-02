@@ -37,7 +37,7 @@ struct Spawner {
 };
 
 struct Game {
-    explicit Game(Scene& scene); // spawns the player and the enemy spawner
+    explicit Game(Scene& scene); // builds the game level in an empty scene: floor, sun, player, enemy spawner
 
     void update(Scene& scene, Camera& camera, const Input& input, float dt);
 

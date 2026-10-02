@@ -13,9 +13,13 @@
 
 #include <string>
 
-// The world: resources (meshes, textures, models) and the entities that use them.
+// Euler rotation (degrees) that points an entity's -Z axis along `direction`.
+glm::vec3 aimRotation(glm::vec3 direction);
+
+// The world: resources (meshes, textures, models) and the entities that use them. It starts with no entities,
+// a scene is filled by buildDemo() or by the game.
 struct Scene {
-    Scene(); // builds the demo scene
+    Scene(); // loads the shared resources
 
     Mesh cube;
     Mesh sphere;
