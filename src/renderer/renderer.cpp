@@ -73,10 +73,12 @@ void Renderer::drawLit(const Scene& scene, const Mesh& mesh, const Material& mat
 
     setCulling(faceCulling && !material.doubleSided, GL_BACK);
     mesh.draw();
+    drawCalls++;
 }
 
 void Renderer::render(Scene& scene, const Camera& camera, int width, int height) {
     entt::registry& registry = scene.registry;
+    drawCalls = 0;
 
     // Gather the lights from their entities. The shader takes one sun, up to kMaxPointLights point lights
     // and one spot; extra ones are ignored. A missing light is sent disabled.
@@ -195,6 +197,7 @@ void Renderer::render(Scene& scene, const Camera& camera, int width, int height)
         lamp.setMat4("model", glm::scale(glm::translate(glm::mat4(1.0f), p.position), glm::vec3(0.15f)));
         lamp.setVec3("lightColor", p.light.diffuse);
         scene.sphere.draw();
+        drawCalls++;
     }
 
     // Sky last: its depth is 1.0, so the depth test skips every pixel an object already covered.

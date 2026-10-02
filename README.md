@@ -9,6 +9,7 @@ A game engine written in C++ as a learning project: the goal is to understand ho
 A simplified 3D survivors-like built on the engine.
 
 - **Player**: a player that runs relative to the camera, turns to face where it's going, and jumps with gravity.
+- **Enemies** that spawn on a ring around the player, chase it and drain its health on contact.
 - **Third-person camera** orbiting the player, with adjustable distance.
 
 ## Engine features

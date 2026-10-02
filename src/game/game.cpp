@@ -4,14 +4,20 @@
 
 #include <algorithm>
 #include <cmath>
+#include <vector>
 
 static constexpr float kGroundHeight = -0.5f; // top of the floor
 static constexpr float kGravity = 20.0f;      // stronger than real gravity: snappier jumps
+static constexpr float kArenaHalfSize = 19.0f; // inside the 40x40 floor
+static constexpr float kPlayerRadius = 0.4f;
+static constexpr float kEnemyScale = 0.8f;
 
 Game::Game(Scene& scene) {
     // "Shiba" by zixisun02, CC-BY-4.0 (see models/shiba/license.txt).
     player = scene.create("Player", {.position = {0.0f, kGroundHeight, 5.0f}});
     scene.registry.emplace<Player>(player);
+    scene.registry.emplace<Health>(player);
+    scene.registry.emplace<Spawner>(scene.create("Enemy spawner"));
 
     // The model faces +Z but entities face -Z, so it's turned around on a child.
     const entt::entity model = scene.create("Shiba", {.rotation = {0.0f, 180.0f, 0.0f}, .scale = glm::vec3(scene.shiba.fitScale(1.2f)), .parent = player});
@@ -72,4 +78,61 @@ void Game::update(Scene& scene, Camera& camera, const Input& input, float dt) {
     const glm::vec3 target = transform.position + glm::vec3(0.0f, 1.0f, 0.0f);
     camera.position = target - camera.front() * cameraDistance;
     camera.position.y = std::max(camera.position.y, kGroundHeight + 0.2f);
+
+    updateEnemies(scene, dt);
+}
+
+void Game::updateEnemies(Scene& scene, float dt) {
+    entt::registry& registry = scene.registry;
+    const glm::vec3 playerPos = registry.get<Transform>(player).position;
+    Health& health = registry.get<Health>(player);
+
+    for (auto [entity, spawner] : registry.view<Spawner>().each()) {
+        spawner.timer += dt;
+
+        if (spawner.timer < spawner.interval)
+            continue;
+
+        spawner.timer = 0.0f;
+
+        if (static_cast<int>(registry.view<Enemy>().size()) >= spawner.maxEnemies)
+            continue;
+
+        // Spawn enemy in a random position around the player in a radius
+        const float angle = std::uniform_real_distribution<float>(0.0f, 6.2831853f)(rng);
+        glm::vec3 position = playerPos + glm::vec3(std::cos(angle), 0.0f, std::sin(angle)) * spawner.ringRadius;
+        position.x = std::clamp(position.x, -kArenaHalfSize, kArenaHalfSize);
+        position.z = std::clamp(position.z, -kArenaHalfSize, kArenaHalfSize);
+        position.y = kGroundHeight + 0.5f * kEnemyScale; // sphere radius is 0.5
+
+        const entt::entity enemy = scene.create("Enemy", {.position = position, .scale = glm::vec3(kEnemyScale)});
+        registry.emplace<Enemy>(enemy);
+        registry.emplace<MeshRenderer>(enemy, &scene.sphere, enemyMaterial);
+    }
+
+    // Spawned enemies follow the player
+    for (auto [entity, transform, enemy] : registry.view<Transform, Enemy>().each()) {
+        glm::vec3 toPlayer = playerPos - transform.position;
+        toPlayer.y = 0.0f;
+        const float distance = glm::length(toPlayer);
+
+        if (distance > 0.001f)
+            transform.position += toPlayer / distance * std::min(enemy.speed * dt, distance);
+
+        // If they are close to the player, damage it
+        if (distance < enemy.radius + kPlayerRadius)
+            health.current -= enemy.damage * dt;
+    }
+
+    // Placeholder game over
+    if (health.current <= 0.0f) {
+        health.current = health.max;
+
+        std::vector<entt::entity> enemies;
+
+        for (entt::entity entity : registry.view<Enemy>())
+            enemies.push_back(entity);
+
+        registry.destroy(enemies.begin(), enemies.end());
+    }
 }

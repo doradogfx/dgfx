@@ -248,6 +248,32 @@ static void inspector(Scene& scene) {
         ImGui::PopID();
     }
 
+    if (auto* health = registry.try_get<Health>(selected)) {
+        ImGui::PushID("health");
+        ImGui::SeparatorText("Health");
+        ImGui::DragFloat("Current", &health->current, 1.0f, 0.0f, health->max);
+        ImGui::DragFloat("Max", &health->max, 1.0f, 1.0f, 10000.0f);
+        ImGui::PopID();
+    }
+
+    if (auto* enemy = registry.try_get<Enemy>(selected)) {
+        ImGui::PushID("enemy");
+        ImGui::SeparatorText("Enemy");
+        ImGui::DragFloat("Speed", &enemy->speed, 0.1f, 0.0f, 50.0f, "%.1f u/s");
+        ImGui::DragFloat("Radius", &enemy->radius, 0.01f, 0.0f, 5.0f);
+        ImGui::DragFloat("Damage", &enemy->damage, 0.5f, 0.0f, 1000.0f, "%.1f /s");
+        ImGui::PopID();
+    }
+
+    if (auto* spawner = registry.try_get<Spawner>(selected)) {
+        ImGui::PushID("spawner");
+        ImGui::SeparatorText("Spawner");
+        ImGui::DragFloat("Interval", &spawner->interval, 0.05f, 0.05f, 60.0f, "%.2f s");
+        ImGui::DragInt("Max enemies", &spawner->maxEnemies, 1.0f, 0, 2000);
+        ImGui::DragFloat("Ring radius", &spawner->ringRadius, 0.1f, 1.0f, 40.0f);
+        ImGui::PopID();
+    }
+
     if (registry.all_of<MeshRenderer>(selected)) {
         ImGui::SeparatorText("Mesh renderer");
         ImGui::TextDisabled("Mesh with its own material");
@@ -343,7 +369,7 @@ static void displayPanel(GLFWwindow* window) {
 }
 
 // Small overlay without a title bar, pinned to the bottom-left corner.
-static void statsOverlay(const Scene& scene, float margin) {
+static void statsOverlay(const Scene& scene, const Renderer& renderer, float margin) {
     const ImGuiIO& io = ImGui::GetIO();
     const ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize |
                                    ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings |
@@ -354,7 +380,12 @@ static void statsOverlay(const Scene& scene, float margin) {
 
     if (ImGui::Begin("Stats", &panels.stats, flags)) {
         ImGui::Text("%.1f FPS (%.2f ms)", io.Framerate, 1000.0f / io.Framerate);
-        ImGui::Text("%zu entities", static_cast<size_t>(scene.registry.view<const Name>().size()));
+        ImGui::Text("%zu entities, %d lit draws", static_cast<size_t>(scene.registry.view<const Name>().size()), renderer.drawCalls);
+        ImGui::Text("%zu enemies", static_cast<size_t>(scene.registry.view<const Enemy>().size()));
+
+        for (auto [entity, health, player] : scene.registry.view<const Health, const Player>().each())
+            ImGui::Text("Health %.0f / %.0f", health.current, health.max);
+
         ImGui::TextDisabled("Tab: UI mode | F1: fly camera");
     }
 
@@ -416,7 +447,7 @@ void debugUI(GLFWwindow* window, Scene& scene, Renderer& renderer) {
     }
 
     if (panels.stats)
-        statsOverlay(scene, margin);
+        statsOverlay(scene, renderer, margin);
 
     if (panels.demo)
         ImGui::ShowDemoWindow(&panels.demo);

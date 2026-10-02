@@ -33,6 +33,8 @@ public:
     // Draws a frame: the scene into the off-screen target, then the post pass onto the window.
     void render(Scene& scene, const Camera& camera, int width, int height);
 
+    int drawCalls = 0; // meshes drawn with the lit and lamp shaders in the last frame
+
     // For the debug preview.
     GLuint shadowMapTexture() const { return shadowMap.textureId(); }
 

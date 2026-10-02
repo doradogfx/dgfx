@@ -2,9 +2,12 @@
 
 #include "core/camera.h"
 #include "core/input.h"
+#include "renderer/material.h"
 #include "scene/scene.h"
 
 #include <entt/entt.hpp>
+
+#include <random>
 
 struct Player {
     float speed = 5.0f;     // units per second
@@ -13,9 +16,28 @@ struct Player {
     bool grounded = true;
 };
 
-// The gameplay: the player and the third-person camera that orbits it.
+struct Health {
+    float current = 100.0f;
+    float max = 100.0f;
+};
+
+// Walks straight at the player and hurts them while touching.
+struct Enemy {
+    float speed = 3.0f;
+    float radius = 0.4f;
+    float damage = 5.0f; // per second of contact
+};
+
+// Spawns enemies on a ring around the player.
+struct Spawner {
+    float interval = 1.0f; // seconds between spawns
+    float timer = 0.0f;
+    int maxEnemies = 100;
+    float ringRadius = 16.0f;
+};
+
 struct Game {
-    explicit Game(Scene& scene); // spawns the player
+    explicit Game(Scene& scene); // spawns the player and the enemy spawner
 
     void update(Scene& scene, Camera& camera, const Input& input, float dt);
 
@@ -25,4 +47,10 @@ struct Game {
     float cameraYaw = -90.0f;
     float cameraPitch = -20.0f;
     float cameraDistance = 6.0f;
+
+private:
+    void updateEnemies(Scene& scene, float dt);
+
+    std::mt19937 rng{1};
+    Material enemyMaterial{nullptr, nullptr, glm::vec3(0.6f, 0.02f, 0.02f), glm::vec3(0.3f), 32.0f}; // linear red plastic
 };
