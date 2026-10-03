@@ -3,6 +3,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 #include <cmath>
+#include <vector>
 
 // Inverts the transform's yaw-then-pitch rotation of (0, 0, -1), which gives (-cos p sin y, sin p, -cos p cos y).
 glm::vec3 aimRotation(glm::vec3 direction) {
@@ -37,4 +38,18 @@ glm::vec3 Scene::position(entt::entity entity) const {
 
 glm::vec3 Scene::forward(entt::entity entity) const {
     return glm::normalize(glm::mat3(worldMatrix(entity)) * glm::vec3(0.0f, 0.0f, -1.0f));
+}
+
+void Scene::destroy(entt::entity entity) {
+    // Collected first: destroying while walking the registry would invalidate the walk.
+    std::vector<entt::entity> doomed = {entity};
+
+    for (size_t i = 0; i < doomed.size(); i++) {
+        for (auto [child, transform] : registry.view<const Transform>().each()) {
+            if (transform.parent == doomed[i])
+                doomed.push_back(child);
+        }
+    }
+
+    registry.destroy(doomed.begin(), doomed.end());
 }

@@ -1,6 +1,5 @@
 #pragma once
 
-#include "assets/assets.h"
 #include "core/camera.h"
 #include "scene/scene.h"
 
@@ -14,8 +13,5 @@ struct Rotator {
 // it writes the local transform, so under a parent it would be offset by the parent's.
 struct FollowCamera {};
 
-// Fills an empty scene with the engine demo: materials, lights and the shiba on a small floor.
-void buildDemo(Scene& scene, Assets& assets);
-
-// Moves the demo's Rotator and FollowCamera entities.
+// Moves the Rotator and FollowCamera entities of scenes/demo.json.
 void updateDemo(Scene& scene, const Camera& camera, float dt);

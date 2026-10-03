@@ -1,14 +1,28 @@
 #include "core/application.h"
 
+#include "scene/scene_io.h"
 #include "ui/ui.h"
 
 #include <GLFW/glfw3.h>
+
+#include <cstdio>
+#include <exception>
 
 Application::Application()
     : renderer(window.framebufferSize().x, window.framebufferSize().y),
       input(window.handle()) {
     registerEngineComponents(components);
     initUI(window.handle());
+}
+
+void Application::loadScene(const std::string& file) {
+    scene.registry = entt::registry(); // fresh, so ids count up from 0 in creation order (clear() would recycle them)
+    ::loadScene(scene, assets, components, SCENE_DIR + file);
+    currentScene = file;
+}
+
+void Application::saveScene(const std::string& file) const {
+    ::saveScene(scene, assets, components, SCENE_DIR + file);
 }
 
 Application::~Application() {
@@ -43,7 +57,22 @@ void Application::run() {
         }
 
         beginUI();
-        debugUI(handle, scene, renderer, components, [this] { statsOverlay(); });
+
+        UiContext ui{
+            scene, assets, renderer, components, currentScene,
+            [this] {
+                try {
+                    saveScene(currentScene);
+                    return true;
+                } catch (const std::exception& e) {
+                    std::fprintf(stderr, "%s\n", e.what());
+                    return false;
+                }
+            },
+            [this] { statsOverlay(); },
+        };
+
+        debugUI(handle, ui);
 
         renderer.render(scene, camera, size.x, size.y);
         endUI();

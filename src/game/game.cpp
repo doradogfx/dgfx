@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <stdexcept>
 #include <vector>
 
 static constexpr float kGroundHeight = -0.5f; // top of the floor
@@ -13,29 +14,24 @@ static constexpr float kPlayerRadius = 0.4f;
 static constexpr float kEnemyScale = 0.8f;
 
 Game::Game(Scene& scene, Assets& assets) {
-    scene.sky = &assets.cubemap("skybox/");
     enemyMesh = &assets.mesh("sphere");
 
-    scene.registry.emplace<MeshRenderer>(scene.create("Floor", {.position = {0.0f, kGroundHeight - 0.05f, 0.0f}, .scale = {40.0f, 0.1f, 40.0f}}), &assets.mesh("cube"), rubber({0.6f, 0.6f, 0.6f}));
+    bool found = false;
 
-    // Only the sun lights this scene, so more ambient than the demo's.
-    DirLight sun;
-    sun.ambient = srgb(glm::vec3(0.25f));
-    sun.diffuse = srgb({0.85f, 0.8f, 0.7f});
-    scene.registry.emplace<DirLight>(scene.create("Sun", {.rotation = aimRotation({-0.6f, -1.0f, -0.4f})}), sun);
+    for (auto [entity, p] : scene.registry.view<Player>().each()) {
+        player = entity;
+        found = true;
+    }
 
-    // "Shiba" by zixisun02, CC-BY-4.0 (see models/shiba/license.txt).
-    player = scene.create("Player", {.position = {0.0f, kGroundHeight, 5.0f}});
-    scene.registry.emplace<Player>(player);
-    scene.registry.emplace<Health>(player);
-    scene.registry.emplace<Spawner>(scene.create("Enemy spawner"));
-
-    // The model faces +Z but entities face -Z, so it's turned around on a child.
-    const entt::entity model = scene.create("Shiba", {.rotation = {0.0f, 180.0f, 0.0f}, .scale = glm::vec3(assets.model("shiba/scene.gltf").fitScale(1.2f)), .parent = player});
-    scene.registry.emplace<ModelRenderer>(model, &assets.model("shiba/scene.gltf"));
+    if (!found)
+        throw std::runtime_error("The level has no Player entity");
 }
 
 void Game::update(Scene& scene, Camera& camera, const Input& input, float dt) {
+    // The player can be deleted from the editor UI.
+    if (!scene.registry.valid(player) || !scene.registry.all_of<Player, Health>(player))
+        return;
+
     Transform& transform = scene.registry.get<Transform>(player);
     Player& p = scene.registry.get<Player>(player);
 
@@ -118,6 +114,7 @@ void Game::updateEnemies(Scene& scene, float dt) {
 
         const entt::entity enemy = scene.create("Enemy", {.position = position, .scale = glm::vec3(kEnemyScale)});
         registry.emplace<Enemy>(enemy);
+        registry.emplace<Transient>(enemy); // spawned while playing, not part of the level file
         registry.emplace<MeshRenderer>(enemy, enemyMesh, enemyMaterial);
     }
 

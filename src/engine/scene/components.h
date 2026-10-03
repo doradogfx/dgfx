@@ -33,3 +33,6 @@ struct MeshRenderer {
 struct ModelRenderer {
     const Model* model;
 };
+
+// Tag: made while running (spawned enemies and the like), so saving a scene skips it.
+struct Transient {};

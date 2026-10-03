@@ -1,0 +1,722 @@
+{
+  "entities": [
+    {
+      "Mesh renderer": {
+        "material": {
+          "diffuse": [
+            0.32503697,
+            0.32503697,
+            0.32503697
+          ],
+          "doubleSided": false,
+          "ior": 1.52,
+          "reflectivity": 0.0,
+          "refractivity": 0.0,
+          "shininess": 8.0,
+          "specular": [
+            0.1,
+            0.1,
+            0.1
+          ]
+        },
+        "mesh": "cube"
+      },
+      "name": "Floor",
+      "transform": {
+        "position": [
+          0.0,
+          -0.55,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          10.0,
+          0.1,
+          10.0
+        ]
+      }
+    },
+    {
+      "Mesh renderer": {
+        "material": {
+          "diffuse": [
+            1.0,
+            0.21763763,
+            0.07074028
+          ],
+          "doubleSided": false,
+          "ior": 1.52,
+          "reflectivity": 0.0,
+          "refractivity": 0.0,
+          "shininess": 128.0,
+          "specular": [
+            0.5,
+            0.5,
+            0.5
+          ]
+        },
+        "mesh": "sphere"
+      },
+      "name": "Orange sphere",
+      "transform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "Mesh renderer": {
+        "material": {
+          "diffuse": [
+            0.07074028,
+            0.21763763,
+            1.0
+          ],
+          "doubleSided": false,
+          "ior": 1.52,
+          "reflectivity": 0.0,
+          "refractivity": 0.0,
+          "shininess": 512.0,
+          "specular": [
+            0.5,
+            0.5,
+            0.5
+          ]
+        },
+        "mesh": "sphere"
+      },
+      "name": "Blue sphere",
+      "transform": {
+        "position": [
+          2.0,
+          0.0,
+          -1.0
+        ],
+        "rotation": [
+          0.0,
+          30.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "Mesh renderer": {
+        "material": {
+          "diffuse": [
+            0.13320851,
+            0.79311013,
+            0.13320851
+          ],
+          "doubleSided": false,
+          "ior": 1.52,
+          "reflectivity": 0.0,
+          "refractivity": 0.0,
+          "shininess": 8.0,
+          "specular": [
+            0.1,
+            0.1,
+            0.1
+          ]
+        },
+        "mesh": "sphere"
+      },
+      "name": "Green sphere",
+      "transform": {
+        "position": [
+          -1.5,
+          -0.25,
+          1.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          0.5,
+          0.5,
+          0.5
+        ]
+      }
+    },
+    {
+      "Mesh renderer": {
+        "material": {
+          "diffuse": [
+            0.45626342,
+            0.0013732006,
+            0.7361094
+          ],
+          "doubleSided": false,
+          "ior": 1.52,
+          "reflectivity": 0.0,
+          "refractivity": 0.0,
+          "shininess": 128.0,
+          "specular": [
+            0.5,
+            0.5,
+            0.5
+          ]
+        },
+        "mesh": "sphere"
+      },
+      "name": "Purple sphere",
+      "transform": {
+        "position": [
+          1.5,
+          0.0,
+          1.0
+        ],
+        "rotation": [
+          0.0,
+          45.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "Mesh renderer": {
+        "material": {
+          "diffuse": [
+            0.5336073,
+            0.33280993,
+            0.038112346
+          ],
+          "doubleSided": false,
+          "ior": 1.52,
+          "reflectivity": 0.4,
+          "refractivity": 0.0,
+          "shininess": 204.8,
+          "specular": [
+            0.3596985,
+            0.2746782,
+            0.10960441
+          ]
+        },
+        "mesh": "sphere"
+      },
+      "name": "Gold sphere",
+      "transform": {
+        "position": [
+          -2.2,
+          0.0,
+          -1.2
+        ],
+        "rotation": [
+          0.0,
+          15.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "Mesh renderer": {
+        "material": {
+          "diffuse": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "diffuseMap": {
+            "file": "container2.png",
+            "srgb": true
+          },
+          "doubleSided": false,
+          "ior": 1.52,
+          "reflectivity": 0.3,
+          "refractivity": 0.0,
+          "shininess": 128.0,
+          "specular": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "specularMap": {
+            "file": "container2_specular.png",
+            "srgb": false
+          }
+        },
+        "mesh": "cube"
+      },
+      "name": "Crate",
+      "transform": {
+        "position": [
+          0.0,
+          0.0,
+          2.4
+        ],
+        "rotation": [
+          0.0,
+          25.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "Mesh renderer": {
+        "material": {
+          "diffuse": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "diffuseMap": {
+            "file": "container2.png",
+            "srgb": true
+          },
+          "doubleSided": false,
+          "ior": 1.52,
+          "reflectivity": 0.3,
+          "refractivity": 0.0,
+          "shininess": 128.0,
+          "specular": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "specularMap": {
+            "file": "container2_specular.png",
+            "srgb": false
+          }
+        },
+        "mesh": "cube"
+      },
+      "name": "Crate",
+      "transform": {
+        "position": [
+          -3.2,
+          0.0,
+          0.6
+        ],
+        "rotation": [
+          0.0,
+          10.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "Mesh renderer": {
+        "material": {
+          "diffuse": [
+            0.02,
+            0.02,
+            0.02
+          ],
+          "doubleSided": false,
+          "ior": 1.52,
+          "reflectivity": 1.0,
+          "refractivity": 0.0,
+          "shininess": 512.0,
+          "specular": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "mesh": "sphere"
+      },
+      "name": "Chrome sphere",
+      "transform": {
+        "position": [
+          3.3,
+          0.0,
+          0.8
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "Mesh renderer": {
+        "material": {
+          "diffuse": [
+            0.02,
+            0.02,
+            0.02
+          ],
+          "doubleSided": false,
+          "ior": 1.52,
+          "reflectivity": 0.04,
+          "refractivity": 0.9,
+          "shininess": 512.0,
+          "specular": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        "mesh": "sphere"
+      },
+      "name": "Glass sphere",
+      "transform": {
+        "position": [
+          -0.4,
+          0.0,
+          -2.4
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "Model renderer": {
+        "model": "shiba/scene.gltf"
+      },
+      "name": "Shiba",
+      "transform": {
+        "position": [
+          3.6,
+          -0.5,
+          -1.6
+        ],
+        "rotation": [
+          0.0,
+          -30.0,
+          0.0
+        ],
+        "scale": [
+          0.67614245,
+          0.67614245,
+          0.67614245
+        ]
+      }
+    },
+    {
+      "Directional light": {
+        "ambient": [
+          0.01,
+          0.01,
+          0.01
+        ],
+        "diffuse": [
+          0.17261061,
+          0.14830247,
+          0.11899368
+        ],
+        "enabled": true,
+        "specular": [
+          0.3,
+          0.3,
+          0.3
+        ]
+      },
+      "name": "Sun",
+      "transform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          -54.204247,
+          56.309933,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "Rotator": {
+        "degreesPerSecond": [
+          0.0,
+          28.64789,
+          0.0
+        ],
+        "enabled": true
+      },
+      "name": "Light orbit",
+      "transform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          59.429382,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "Point light": {
+        "ambient": [
+          0.01,
+          0.00028991184,
+          0.00028991184
+        ],
+        "constant": 1.0,
+        "diffuse": [
+          1.0,
+          0.028991185,
+          0.028991185
+        ],
+        "enabled": true,
+        "linear": 0.35,
+        "quadratic": 0.44,
+        "specular": [
+          1.0,
+          0.028991185,
+          0.028991185
+        ]
+      },
+      "name": "Red light",
+      "transform": {
+        "parent": 12,
+        "position": [
+          2.0,
+          1.0,
+          1.5
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "Point light": {
+        "ambient": [
+          0.00028991184,
+          0.01,
+          0.00028991184
+        ],
+        "constant": 1.0,
+        "diffuse": [
+          0.028991185,
+          1.0,
+          0.028991185
+        ],
+        "enabled": true,
+        "linear": 0.35,
+        "quadratic": 0.44,
+        "specular": [
+          0.028991185,
+          1.0,
+          0.028991185
+        ]
+      },
+      "name": "Green light",
+      "transform": {
+        "parent": 12,
+        "position": [
+          -2.0,
+          1.0,
+          1.5
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "Point light": {
+        "ambient": [
+          0.00028991184,
+          0.0007074028,
+          0.01
+        ],
+        "constant": 1.0,
+        "diffuse": [
+          0.028991185,
+          0.07074028,
+          1.0
+        ],
+        "enabled": true,
+        "linear": 0.35,
+        "quadratic": 0.44,
+        "specular": [
+          0.028991185,
+          0.07074028,
+          1.0
+        ]
+      },
+      "name": "Blue light",
+      "transform": {
+        "parent": 12,
+        "position": [
+          -1.5,
+          1.2,
+          -2.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "Point light": {
+        "ambient": [
+          0.01,
+          0.01,
+          0.01
+        ],
+        "constant": 1.0,
+        "diffuse": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "enabled": true,
+        "linear": 0.35,
+        "quadratic": 0.44,
+        "specular": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "name": "White light",
+      "transform": {
+        "parent": 12,
+        "position": [
+          2.0,
+          1.5,
+          -2.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "Follow camera": {},
+      "Spot light": {
+        "ambient": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "constant": 1.0,
+        "diffuse": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "enabled": false,
+        "innerAngle": 12.5,
+        "linear": 0.09,
+        "outerAngle": 17.5,
+        "quadratic": 0.032,
+        "specular": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "name": "Flashlight",
+      "transform": {
+        "position": [
+          0.0,
+          2.0,
+          6.0
+        ],
+        "rotation": [
+          -15.000001,
+          2.504478e-06,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    }
+  ],
+  "sky": "skybox/"
+}

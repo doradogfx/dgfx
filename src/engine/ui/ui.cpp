@@ -1,8 +1,10 @@
 #include "ui/ui.h"
 
-#include "scene/component_registry.h"
+#include "assets/assets.h"
 #include "renderer/renderer.h"
+#include "scene/component_registry.h"
 #include "scene/scene.h"
+#include "scene/scene_io.h"
 
 #include <GLFW/glfw3.h>
 #include <glm/gtc/type_ptr.hpp>
@@ -12,6 +14,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 #include <cstdint>
 #include <functional>
 #include <string>
@@ -154,6 +157,17 @@ void shutdownUI() {
 
 static entt::entity selected = entt::null;
 
+// What a hierarchy context menu asked for. Applied after the panel is drawn: the tree walks the registry, so
+// creating or destroying entities in the middle of it would break the walk.
+enum class Action { None, AddEntity, Duplicate, Delete };
+
+struct Pending {
+    Action action = Action::None;
+    entt::entity target = entt::null; // the entity right-clicked, or null for empty space
+};
+
+static Pending pending;
+
 // Entities whose parent is `parent` (entt::null for roots), in creation order. Views iterate newest first.
 // ponytail: scans every entity per call, keep a children list in the scene if trees get large.
 static std::vector<entt::entity> children(const Scene& scene, entt::entity parent) {
@@ -185,6 +199,17 @@ static void entityNode(const Scene& scene, entt::entity entity) {
     if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen())
         selected = entity;
 
+    if (ImGui::BeginPopupContextItem()) {
+        if (ImGui::MenuItem("Add child"))
+            pending = {Action::AddEntity, entity};
+        if (ImGui::MenuItem("Duplicate"))
+            pending = {Action::Duplicate, entity};
+        if (ImGui::MenuItem("Delete"))
+            pending = {Action::Delete, entity};
+
+        ImGui::EndPopup();
+    }
+
     if (open) {
         for (entt::entity kid : kids)
             entityNode(scene, kid);
@@ -193,16 +218,20 @@ static void entityNode(const Scene& scene, entt::entity entity) {
     }
 }
 
-// The selected entity's components. Each gets its own ID scope, since labels like "Enabled" repeat.
-static void inspector(Scene& scene, const ComponentRegistry& components) {
-    entt::registry& registry = scene.registry;
+// The selected entity: its name, transform and registered components.
+static void inspector(UiContext& context) {
+    entt::registry& registry = context.scene.registry;
 
     if (!registry.valid(selected)) {
         ImGui::TextDisabled("Select an entity to inspect it");
         return;
     }
 
-    ImGui::SeparatorText(registry.get<Name>(selected).value.c_str());
+    char name[128];
+    std::snprintf(name, sizeof(name), "%s", registry.get<Name>(selected).value.c_str());
+
+    if (ImGui::InputText("Name", name, sizeof(name)))
+        registry.get<Name>(selected).value = name;
 
     if (auto* transform = registry.try_get<Transform>(selected)) {
         ImGui::PushID("transform");
@@ -212,7 +241,27 @@ static void inspector(Scene& scene, const ComponentRegistry& components) {
         ImGui::PopID();
     }
 
-    components.inspect(registry, selected);
+    context.components.inspect(registry, selected, context.assets);
+}
+
+// Applies what a hierarchy context menu asked for, now that nothing is walking the registry.
+static void applyPending(UiContext& context) {
+    const Pending request = pending;
+    pending = {};
+
+    switch (request.action) {
+    case Action::None:
+        break;
+    case Action::AddEntity:
+        selected = context.scene.create("Entity", {.parent = request.target});
+        break;
+    case Action::Duplicate:
+        selected = duplicateEntity(context.scene, context.assets, context.components, request.target);
+        break;
+    case Action::Delete:
+        context.scene.destroy(request.target); // a destroyed selection fails registry.valid() and clears itself
+        break;
+    }
 }
 
 // Which panels are open, toggled from the View menu.
@@ -299,7 +348,7 @@ static void displayPanel(GLFWwindow* window) {
 }
 
 // Small overlay without a title bar, pinned to the bottom-left corner.
-static void statsOverlay(const Scene& scene, const Renderer& renderer, const std::function<void()>& extra, float margin) {
+static void statsOverlay(const UiContext& context, float margin) {
     const ImGuiIO& io = ImGui::GetIO();
     const ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize |
                                    ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings |
@@ -310,16 +359,31 @@ static void statsOverlay(const Scene& scene, const Renderer& renderer, const std
 
     if (ImGui::Begin("Stats", &panels.stats, flags)) {
         ImGui::Text("%.1f FPS (%.2f ms)", io.Framerate, 1000.0f / io.Framerate);
-        ImGui::Text("%zu entities, %d lit draws", static_cast<size_t>(scene.registry.view<const Name>().size()), renderer.drawCalls);
-        extra();
+        ImGui::Text("%zu entities, %d lit draws", static_cast<size_t>(context.scene.registry.view<const Name>().size()), context.renderer.drawCalls);
+
+        if (context.statsExtra)
+            context.statsExtra();
+
         ImGui::TextDisabled("Tab: toggle camera / UI mode");
     }
 
     ImGui::End();
 }
 
-void debugUI(GLFWwindow* window, Scene& scene, Renderer& renderer, const ComponentRegistry& components, const std::function<void()>& statsExtra) {
+void debugUI(GLFWwindow* window, UiContext& context) {
+    static double savedAt = -100.0;
+    static bool saveFailed = false;
+
     if (ImGui::BeginMainMenuBar()) {
+        if (ImGui::BeginMenu("File")) {
+            if (ImGui::MenuItem("Save scene", nullptr, false, !context.sceneName.empty() && static_cast<bool>(context.save))) {
+                saveFailed = !context.save();
+                savedAt = ImGui::GetTime();
+            }
+
+            ImGui::EndMenu();
+        }
+
         if (ImGui::BeginMenu("View")) {
             ImGui::MenuItem("Hierarchy", nullptr, &panels.hierarchy);
             ImGui::MenuItem("Inspector", nullptr, &panels.inspector);
@@ -330,6 +394,16 @@ void debugUI(GLFWwindow* window, Scene& scene, Renderer& renderer, const Compone
             ImGui::MenuItem("ImGui demo", nullptr, &panels.demo);
             ImGui::EndMenu();
         }
+
+        // The loaded scene on the right, with the result of a save for a few seconds.
+        std::string label = context.sceneName;
+
+        if (!label.empty() && ImGui::GetTime() - savedAt < 3.0)
+            label += saveFailed ? "  (save failed, see the console)" : "  (saved)";
+
+        const float labelWidth = ImGui::CalcTextSize(label.c_str()).x;
+        ImGui::SetCursorPosX(ImGui::GetWindowWidth() - labelWidth - ImGui::GetStyle().ItemSpacing.x * 2.0f);
+        ImGui::TextDisabled("%s", label.c_str());
 
         ImGui::EndMainMenuBar();
     }
@@ -344,23 +418,32 @@ void debugUI(GLFWwindow* window, Scene& scene, Renderer& renderer, const Compone
 
     if (panels.hierarchy) {
         if (beginPanel("Hierarchy", &panels.hierarchy, ImVec2(margin, top), ImVec2(width, hierarchyHeight))) {
-            for (entt::entity root : children(scene, entt::null))
-                entityNode(scene, root);
+            for (entt::entity root : children(context.scene, entt::null))
+                entityNode(context.scene, root);
+
+            if (ImGui::BeginPopupContextWindow("hierarchy_menu", ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems)) {
+                if (ImGui::MenuItem("Add entity"))
+                    pending = {Action::AddEntity, entt::null};
+
+                ImGui::EndPopup();
+            }
         }
 
         endPanel();
     }
 
+    applyPending(context);
+
     if (panels.inspector) {
         if (beginPanel("Inspector", &panels.inspector, ImVec2(margin, top + hierarchyHeight + margin), ImVec2(width, screen.y * 0.4f)))
-            inspector(scene, components);
+            inspector(context);
 
         endPanel();
     }
 
     if (panels.renderer) {
         if (beginPanel("Renderer", &panels.renderer, ImVec2(right, top), ImVec2(width, 0.0f)))
-            rendererPanel(renderer);
+            rendererPanel(context.renderer);
 
         endPanel();
     }
@@ -373,7 +456,7 @@ void debugUI(GLFWwindow* window, Scene& scene, Renderer& renderer, const Compone
     }
 
     if (panels.stats)
-        statsOverlay(scene, renderer, statsExtra, margin);
+        statsOverlay(context, margin);
 
     if (panels.demo)
         ImGui::ShowDemoWindow(&panels.demo);

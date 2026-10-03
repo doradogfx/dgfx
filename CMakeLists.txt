@@ -73,6 +73,13 @@ FetchContent_Declare(entt
     GIT_SHALLOW TRUE)
 FetchContent_MakeAvailable(entt)
 
+# nlohmann/json: JSON for scene files. Header-only.
+FetchContent_Declare(json
+    GIT_REPOSITORY https://github.com/nlohmann/json.git
+    GIT_TAG v3.11.3
+    GIT_SHALLOW TRUE)
+FetchContent_MakeAvailable(json)
+
 # GLAD: OpenGL 4.6 core function loader, pre-generated and vendored in external/glad.
 add_library(glad STATIC external/glad/src/glad.c)
 target_include_directories(glad PUBLIC external/glad/include)
@@ -95,16 +102,18 @@ add_library(dgfx_engine STATIC
     src/engine/renderer/texture.cpp
     src/engine/scene/component_registry.cpp
     src/engine/scene/scene.cpp
+    src/engine/scene/scene_io.cpp
     src/engine/ui/ui.cpp)
-target_link_libraries(dgfx_engine PUBLIC glfw glad glm::glm imgui assimp::assimp EnTT::EnTT)
+target_link_libraries(dgfx_engine PUBLIC glfw glad glm::glm imgui assimp::assimp EnTT::EnTT nlohmann_json::nlohmann_json)
 target_include_directories(dgfx_engine PUBLIC src/engine PRIVATE ${stb_SOURCE_DIR})
 
-# Shaders, textures and models are loaded from the source tree, so the exe finds them regardless of its working directory.
+# Shaders, textures, models and scenes are loaded from the source tree, so the exe finds them regardless of its working directory.
 # ponytail: absolute source path, copy them next to the exe if it ever ships without the repo.
 target_compile_definitions(dgfx_engine PRIVATE
     SHADER_DIR="${CMAKE_SOURCE_DIR}/shaders/"
     TEXTURE_DIR="${CMAKE_SOURCE_DIR}/textures/"
-    MODEL_DIR="${CMAKE_SOURCE_DIR}/models/")
+    MODEL_DIR="${CMAKE_SOURCE_DIR}/models/"
+    SCENE_DIR="${CMAKE_SOURCE_DIR}/scenes/")
 
 # The game: an executable on top of the engine. src/ is its include root, for "game/game.h".
 add_executable(dgfx

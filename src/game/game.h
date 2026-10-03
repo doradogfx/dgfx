@@ -39,7 +39,7 @@ struct Spawner {
 };
 
 struct Game {
-    Game(Scene& scene, Assets& assets); // builds the game level in an empty scene: floor, sun, player, enemy spawner
+    Game(Scene& scene, Assets& assets); // for a scene loaded from level.json: finds the player entity
 
     void update(Scene& scene, Camera& camera, const Input& input, float dt);
 

@@ -1,0 +1,160 @@
+{
+  "entities": [
+    {
+      "Mesh renderer": {
+        "material": {
+          "diffuse": [
+            0.32503697,
+            0.32503697,
+            0.32503697
+          ],
+          "doubleSided": false,
+          "ior": 1.52,
+          "reflectivity": 0.0,
+          "refractivity": 0.0,
+          "shininess": 8.0,
+          "specular": [
+            0.1,
+            0.1,
+            0.1
+          ]
+        },
+        "mesh": "cube"
+      },
+      "name": "Floor",
+      "transform": {
+        "position": [
+          0.0,
+          -0.55,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          40.0,
+          0.1,
+          40.0
+        ]
+      }
+    },
+    {
+      "Directional light": {
+        "ambient": [
+          0.04736614,
+          0.04736614,
+          0.04736614
+        ],
+        "diffuse": [
+          0.69939363,
+          0.6120656,
+          0.45626342
+        ],
+        "enabled": true,
+        "specular": [
+          0.3,
+          0.3,
+          0.3
+        ]
+      },
+      "name": "Sun",
+      "transform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          -54.204247,
+          56.309933,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "Health": {
+        "current": 100.0,
+        "max": 100.0
+      },
+      "Player": {
+        "jumpSpeed": 7.0,
+        "speed": 5.0
+      },
+      "name": "Player",
+      "transform": {
+        "position": [
+          0.0,
+          -0.5,
+          5.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "Spawner": {
+        "interval": 1.0,
+        "maxEnemies": 100,
+        "ringRadius": 16.0
+      },
+      "name": "Enemy spawner",
+      "transform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "Model renderer": {
+        "model": "shiba/scene.gltf"
+      },
+      "name": "Shiba",
+      "transform": {
+        "parent": 2,
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          180.0,
+          0.0
+        ],
+        "scale": [
+          0.67614245,
+          0.67614245,
+          0.67614245
+        ]
+      }
+    }
+  ],
+  "sky": "skybox/"
+}

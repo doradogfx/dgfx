@@ -7,6 +7,7 @@
 
 GameApp::GameApp() {
     registerGameComponents(components);
+    loadScene("level.json");
     game.emplace(scene, assets);
 }
 
@@ -15,15 +16,15 @@ void GameApp::update(float dt) {
         flyMode = !flyMode;
 
     if (input.pressed(GLFW_KEY_F2)) {
-        scene.registry.clear();
         camera = Camera();
 
         if (game) {
             game.reset();
-            buildDemo(scene, assets);
+            loadScene("demo.json");
             camera.position = glm::vec3(0.0f, 2.0f, 6.0f);
             camera.pitch = -15.0f;
         } else {
+            loadScene("level.json");
             game.emplace(scene, assets);
         }
     }

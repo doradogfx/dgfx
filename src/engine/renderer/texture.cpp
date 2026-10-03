@@ -34,6 +34,7 @@ Texture::Texture(const char* path, bool srgb) {
         return;
     }
 
+    isSrgb = srgb;
     id = upload(width, height, data, srgb ? GL_SRGB8_ALPHA8 : GL_RGBA8);
 
     stbi_image_free(data);
@@ -65,4 +66,13 @@ const Texture& TextureCache::get(const std::string& path, bool srgb) {
         it = textures.emplace(path, std::make_unique<Texture>(path.c_str(), srgb)).first;
 
     return *it->second;
+}
+
+std::string TextureCache::pathOf(const Texture& texture) const {
+    for (const auto& [path, owned] : textures) {
+        if (owned.get() == &texture)
+            return path;
+    }
+
+    return {};
 }

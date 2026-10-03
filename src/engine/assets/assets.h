@@ -20,6 +20,13 @@ public:
     const Model& model(const std::string& file);                // relative to models/
     const Cubemap& cubemap(const std::string& directory);       // relative to textures/
 
+    // The reverse: the name an asset was loaded under, for saving scenes. Throws if Assets doesn't own it.
+    // ponytail: scans the maps, fine for an occasional save.
+    std::string name(const Mesh& mesh) const;
+    std::string name(const Texture& texture) const; // file relative to textures/
+    std::string name(const Model& model) const;
+    std::string name(const Cubemap& cubemap) const;
+
 private:
     TextureCache textures; // declared before the models, so it outlives them
     std::unordered_map<std::string, std::unique_ptr<Mesh>> meshes;

@@ -38,3 +38,35 @@ const Cubemap& Assets::cubemap(const std::string& directory) {
 
     return *slot;
 }
+
+template <typename T>
+static std::string nameIn(const std::unordered_map<std::string, std::unique_ptr<T>>& owned, const T& asset) {
+    for (const auto& [name, pointer] : owned) {
+        if (pointer.get() == &asset)
+            return name;
+    }
+
+    throw std::runtime_error("Asset isn't owned by Assets");
+}
+
+std::string Assets::name(const Mesh& mesh) const {
+    return nameIn(meshes, mesh);
+}
+
+std::string Assets::name(const Texture& texture) const {
+    const std::string path = textures.pathOf(texture);
+    const std::string root = TEXTURE_DIR;
+
+    if (path.compare(0, root.size(), root) != 0)
+        throw std::runtime_error("Texture isn't under the textures folder: " + path);
+
+    return path.substr(root.size());
+}
+
+std::string Assets::name(const Model& model) const {
+    return nameIn(models, model);
+}
+
+std::string Assets::name(const Cubemap& cubemap) const {
+    return nameIn(cubemaps, cubemap);
+}

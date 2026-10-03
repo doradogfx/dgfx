@@ -25,6 +25,7 @@ A simplified 3D survivors-like built on the engine.
 - **Skybox**: cubemap environment rendered behind the scene (depth at the far plane, camera translation removed).
 - **Model loading** with Assimp (glTF, OBJ): meshes and their materials (diffuse/specular textures, double-sided surfaces), with an asset manager that loads meshes, textures, models and skyboxes on first use and shares them.
 - **Entities and components** with EnTT: parent/child transform hierarchy and a scene tree and inspector in the debug panel.
+- **Scene files**: scenes are JSON (`scenes/`), loaded and saved through a component registry that also drives the inspector, so the engine never names game components. The debug UI edits them: add, duplicate and delete entities, add and remove components, save.
 - **Debug UI** with Dear ImGui: separate panels for the scene hierarchy, the selected entity's components, and rendering and display settings, plus a stats overlay.
 
 ## Controls
@@ -52,11 +53,13 @@ Fly camera: mouse to look, W / A / S / D to move, Space / Left Ctrl up / down, L
 - [Dear ImGui](https://github.com/ocornut/imgui): immediate-mode UI for the debug panel (GLFW + OpenGL 3 backends).
 - [Assimp](https://github.com/assimp/assimp): 3D model importer (glTF and OBJ importers enabled).
 - [EnTT](https://github.com/skypjack/entt): header-only entity component system.
+- [nlohmann/json](https://github.com/nlohmann/json): JSON for scene files.
 
 ## Project layout
 
 - `src/engine/`: the engine, built as a static library (`dgfx_engine`) that knows nothing about any game: `core/` (window, application loop, input, camera), `renderer/`, `assets/`, `scene/` (entities, components) and `ui/`.
-- `src/game/`: the game (`dgfx`), an executable on top of the engine. It derives from `Application`, registers its own components and builds its scenes.
+- `src/game/`: the game (`dgfx`), an executable on top of the engine. It derives from `Application`, registers its own components and loads its scenes.
+- `scenes/`: scenes saved as JSON files.
 
 ## Building
 
