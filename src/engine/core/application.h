@@ -31,6 +31,10 @@ protected:
     // Once per frame, after input is read and before the render.
     virtual void update(float dt) = 0;
 
+    // Switches to a scene file, chosen from File > Open scene. A game overrides it to set up its own state;
+    // the default just loads the scene. Called between frames, never in the middle of one.
+    virtual void openScene(const std::string& file) { loadScene(file); }
+
     // Extra lines for the stats overlay.
     virtual void statsOverlay() {}
 
@@ -46,4 +50,5 @@ protected:
 
 private:
     std::string currentScene;
+    std::string pendingScene; // requested by the UI, opened at the start of the next frame
 };

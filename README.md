@@ -51,13 +51,12 @@ A simplified 3D survivors-like built on the engine.
 | Space | Jump |
 | Scroll wheel | Camera distance |
 | F1 | Toggle the debug fly camera |
-| F2 | Switch between the game scene and the engine demo scene (fly camera only) |
 | Tab | Toggle captured mode (cursor hidden) / UI mode (cursor free, to use the panels) |
 | Click outside the panels | Back to captured mode (the cursor is also released when the window loses focus) |
 
 Fly camera: mouse to look, W / A / S / D to move, Space / Left Ctrl up / down, Left Shift faster, scroll wheel to zoom.
 
-The **File** menu has **Save scene** and **Exit**. Closing the window also quits.
+The **File** menu has **Open scene** (it lists the files in `scenes/`), **Save scene** and **Exit**. Closing the window also quits. A scene with a player entity is played; any other scene, like the demo, is explored with the fly camera.
 
 ## Editing scenes
 
@@ -82,7 +81,7 @@ A scene file is a list of entities. A component is a key named after its inspect
 }
 ```
 
-Scenes are read when the app starts and on every F2 switch, so after editing a file by hand, press F2 twice to reload it.
+Scenes are read when the app starts and whenever you open one from **File → Open scene** (opening the current one again reloads it), so after editing a file by hand, open it again to see the change.
 
 ## External libraries
 

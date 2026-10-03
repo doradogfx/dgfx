@@ -93,6 +93,15 @@ void debugUI(GLFWwindow* window, UiContext& context) {
 
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("File")) {
+            if (ImGui::BeginMenu("Open scene", static_cast<bool>(context.listScenes) && static_cast<bool>(context.openScene))) {
+                for (const std::string& file : context.listScenes()) {
+                    if (ImGui::MenuItem(file.c_str(), nullptr, file == context.sceneName))
+                        context.openScene(file);
+                }
+
+                ImGui::EndMenu();
+            }
+
             if (ImGui::MenuItem("Save scene", nullptr, false, !context.sceneName.empty() && static_cast<bool>(context.save))) {
                 saveFailed = !context.save();
                 savedAt = ImGui::GetTime();

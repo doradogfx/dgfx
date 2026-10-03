@@ -5,14 +5,30 @@
 
 #include <GLFW/glfw3.h>
 
+#include <algorithm>
 #include <cstdio>
 #include <exception>
+#include <filesystem>
+#include <vector>
 
 Application::Application()
     : renderer(window.framebufferSize().x, window.framebufferSize().y),
       input(window.handle()) {
     registerEngineComponents(components);
     initUI(window.handle());
+}
+
+// The .json files in scenes/, by name.
+static std::vector<std::string> sceneFiles() {
+    std::vector<std::string> names;
+
+    for (const auto& entry : std::filesystem::directory_iterator(SCENE_DIR)) {
+        if (entry.path().extension() == ".json")
+            names.push_back(entry.path().filename().string());
+    }
+
+    std::sort(names.begin(), names.end());
+    return names;
 }
 
 void Application::loadScene(const std::string& file) {
@@ -41,6 +57,11 @@ void Application::run() {
         const float dt = static_cast<float>(now - lastTime);
         lastTime = now;
 
+        if (!pendingScene.empty()) {
+            openScene(pendingScene);
+            pendingScene.clear();
+        }
+
         input.update();
         update(dt);
 
@@ -67,6 +88,8 @@ void Application::run() {
                 }
             },
             [this] { statsOverlay(); },
+            sceneFiles,
+            [this](const std::string& file) { pendingScene = file; },
         };
 
         debugUI(handle, ui);

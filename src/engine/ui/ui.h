@@ -2,6 +2,7 @@
 
 #include <functional>
 #include <string>
+#include <vector>
 
 struct GLFWwindow;
 struct Scene;
@@ -24,6 +25,8 @@ struct UiContext {
     std::string sceneName;                // the loaded scene file, empty if none
     std::function<bool()> save;           // File > Save scene; false if it failed
     std::function<void()> statsExtra;     // extra lines inside the stats overlay (the game's own numbers)
+    std::function<std::vector<std::string>()> listScenes; // scene files that can be opened
+    std::function<void(const std::string&)> openScene;   // File > Open scene
 };
 
 // The debug UI: menu bar, hierarchy, inspector, renderer and display settings, stats overlay.
