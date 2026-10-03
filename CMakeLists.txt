@@ -77,31 +77,41 @@ FetchContent_MakeAvailable(entt)
 add_library(glad STATIC external/glad/src/glad.c)
 target_include_directories(glad PUBLIC external/glad/include)
 
-add_executable(dgfx
-    src/main.cpp
-    src/assets/assets.cpp
-    src/assets/model.cpp
-    src/core/input.cpp
-    src/game/game.cpp
-    src/renderer/cubemap.cpp
-    src/renderer/framebuffer.cpp
-    src/renderer/light.cpp
-    src/renderer/mesh.cpp
-    src/renderer/renderer.cpp
-    src/renderer/shader.cpp
-    src/renderer/shadowmap.cpp
-    src/renderer/texture.cpp
-    src/scene/demo.cpp
-    src/scene/scene.cpp
-    src/ui/ui.cpp)
-target_link_libraries(dgfx PRIVATE glfw glad glm::glm imgui assimp::assimp EnTT::EnTT)
-
-# src/ is the include root: project headers are included by folder, e.g. "renderer/mesh.h".
-target_include_directories(dgfx PRIVATE src ${stb_SOURCE_DIR})
+# The engine: a static library that knows nothing about any game. Its include root is src/engine, so
+# project headers are included by folder, e.g. "renderer/mesh.h".
+add_library(dgfx_engine STATIC
+    src/engine/assets/assets.cpp
+    src/engine/assets/model.cpp
+    src/engine/core/application.cpp
+    src/engine/core/input.cpp
+    src/engine/core/window.cpp
+    src/engine/renderer/cubemap.cpp
+    src/engine/renderer/framebuffer.cpp
+    src/engine/renderer/light.cpp
+    src/engine/renderer/mesh.cpp
+    src/engine/renderer/renderer.cpp
+    src/engine/renderer/shader.cpp
+    src/engine/renderer/shadowmap.cpp
+    src/engine/renderer/texture.cpp
+    src/engine/scene/component_registry.cpp
+    src/engine/scene/scene.cpp
+    src/engine/ui/ui.cpp)
+target_link_libraries(dgfx_engine PUBLIC glfw glad glm::glm imgui assimp::assimp EnTT::EnTT)
+target_include_directories(dgfx_engine PUBLIC src/engine PRIVATE ${stb_SOURCE_DIR})
 
 # Shaders, textures and models are loaded from the source tree, so the exe finds them regardless of its working directory.
 # ponytail: absolute source path, copy them next to the exe if it ever ships without the repo.
-target_compile_definitions(dgfx PRIVATE
+target_compile_definitions(dgfx_engine PRIVATE
     SHADER_DIR="${CMAKE_SOURCE_DIR}/shaders/"
     TEXTURE_DIR="${CMAKE_SOURCE_DIR}/textures/"
     MODEL_DIR="${CMAKE_SOURCE_DIR}/models/")
+
+# The game: an executable on top of the engine. src/ is its include root, for "game/game.h".
+add_executable(dgfx
+    src/main.cpp
+    src/game/components.cpp
+    src/game/demo.cpp
+    src/game/game.cpp
+    src/game/game_app.cpp)
+target_link_libraries(dgfx PRIVATE dgfx_engine)
+target_include_directories(dgfx PRIVATE src)

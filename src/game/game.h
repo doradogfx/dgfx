@@ -4,6 +4,7 @@
 #include "core/camera.h"
 #include "core/input.h"
 #include "renderer/material.h"
+#include "scene/component_registry.h"
 #include "scene/scene.h"
 
 #include <entt/entt.hpp>
@@ -56,3 +57,6 @@ private:
     std::mt19937 rng{1};
     Material enemyMaterial{nullptr, nullptr, glm::vec3(0.6f, 0.02f, 0.02f), glm::vec3(0.3f), 32.0f}; // linear red plastic
 };
+
+// Registers the game's components (and the demo's Rotator) with the inspector.
+void registerGameComponents(ComponentRegistry& components);

@@ -53,6 +53,11 @@ Fly camera: mouse to look, W / A / S / D to move, Space / Left Ctrl up / down, L
 - [Assimp](https://github.com/assimp/assimp): 3D model importer (glTF and OBJ importers enabled).
 - [EnTT](https://github.com/skypjack/entt): header-only entity component system.
 
+## Project layout
+
+- `src/engine/`: the engine, built as a static library (`dgfx_engine`) that knows nothing about any game: `core/` (window, application loop, input, camera), `renderer/`, `assets/`, `scene/` (entities, components) and `ui/`.
+- `src/game/`: the game (`dgfx`), an executable on top of the engine. It derives from `Application`, registers its own components and builds its scenes.
+
 ## Building
 
 Requires CMake 3.20+ and a C++20 compiler.

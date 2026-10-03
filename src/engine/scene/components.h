@@ -9,7 +9,7 @@
 
 #include <string>
 
-// Components are plain data. The logic that uses them lives in systems (the renderer, Scene::update).
+// Components are plain data. The logic that uses them lives in systems (the renderer, the game's update code).
 // Lights reuse DirLight, PointLight and SpotLight from light.h as components.
 
 struct Name {
@@ -33,13 +33,3 @@ struct MeshRenderer {
 struct ModelRenderer {
     const Model* model;
 };
-
-// Spins the entity's Transform continuously.
-struct Rotator {
-    glm::vec3 degreesPerSecond{0.0f};
-    bool enabled = true;
-};
-
-// Tag: the entity's transform is set to the camera's every frame (e.g. a flashlight). Root entities only:
-// it writes the local transform, so under a parent it would be offset by the parent's.
-struct FollowCamera {};

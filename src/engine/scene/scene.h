@@ -1,6 +1,5 @@
 #pragma once
 
-#include "core/camera.h"
 #include "renderer/cubemap.h"
 #include "renderer/light.h"
 #include "scene/components.h"
@@ -29,7 +28,4 @@ struct Scene {
     glm::vec3 position(entt::entity entity) const;
     // The direction the entity points: its local -Z axis in world space.
     glm::vec3 forward(entt::entity entity) const;
-
-    // Per-frame systems that change the scene (rotators, entities following the camera).
-    void update(float dt, const Camera& camera);
 };

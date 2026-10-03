@@ -38,15 +38,3 @@ glm::vec3 Scene::position(entt::entity entity) const {
 glm::vec3 Scene::forward(entt::entity entity) const {
     return glm::normalize(glm::mat3(worldMatrix(entity)) * glm::vec3(0.0f, 0.0f, -1.0f));
 }
-
-void Scene::update(float dt, const Camera& camera) {
-    for (auto [entity, rotator, transform] : registry.view<Rotator, Transform>().each()) {
-        if (rotator.enabled)
-            transform.rotation = glm::mod(transform.rotation + rotator.degreesPerSecond * dt, glm::vec3(360.0f));
-    }
-
-    for (auto [entity, transform] : registry.view<Transform, FollowCamera>().each()) {
-        transform.position = camera.position;
-        transform.rotation = aimRotation(camera.front());
-    }
-}

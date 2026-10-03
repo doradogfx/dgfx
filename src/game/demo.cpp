@@ -1,4 +1,4 @@
-#include "scene/demo.h"
+#include "game/demo.h"
 
 static PointLight coloredLight(glm::vec3 color) {
     PointLight light;
@@ -63,4 +63,16 @@ void buildDemo(Scene& scene, Assets& assets) {
     const entt::entity flashlight = scene.create("Flashlight"); // off by default
     registry.emplace<SpotLight>(flashlight);
     registry.emplace<FollowCamera>(flashlight);
+}
+
+void updateDemo(Scene& scene, const Camera& camera, float dt) {
+    for (auto [entity, rotator, transform] : scene.registry.view<Rotator, Transform>().each()) {
+        if (rotator.enabled)
+            transform.rotation = glm::mod(transform.rotation + rotator.degreesPerSecond * dt, glm::vec3(360.0f));
+    }
+
+    for (auto [entity, transform] : scene.registry.view<Transform, FollowCamera>().each()) {
+        transform.position = camera.position;
+        transform.rotation = aimRotation(camera.front());
+    }
 }

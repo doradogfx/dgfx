@@ -1,0 +1,40 @@
+#pragma once
+
+#include "assets/assets.h"
+#include "core/camera.h"
+#include "core/input.h"
+#include "core/window.h"
+#include "renderer/renderer.h"
+#include "scene/component_registry.h"
+#include "scene/scene.h"
+
+// The window, the engine subsystems and the main loop. A game derives from it, builds its scene in its own
+// constructor and overrides the hooks.
+class Application {
+public:
+    Application();
+    virtual ~Application();
+
+    // Runs until the window closes.
+    void run();
+
+    Application(const Application&) = delete;
+    Application& operator=(const Application&) = delete;
+
+protected:
+    // Once per frame, after input is read and before the scene's own systems and the render.
+    virtual void update(float dt) = 0;
+
+    // Extra lines for the stats overlay.
+    virtual void statsOverlay() {}
+
+    // Declaration order matters: members are destroyed in reverse, so the window (and its GL context) goes
+    // last, and the assets come before the scene whose components point into them.
+    Window window;
+    Assets assets;
+    Scene scene;
+    Renderer renderer;
+    ComponentRegistry components;
+    Input input; // before the UI starts, so ImGui chains to its scroll callback
+    Camera camera;
+};
