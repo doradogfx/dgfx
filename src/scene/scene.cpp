@@ -10,16 +10,6 @@ glm::vec3 aimRotation(glm::vec3 direction) {
     return {glm::degrees(std::asin(d.y)), glm::degrees(std::atan2(-d.x, -d.z)), 0.0f};
 }
 
-Scene::Scene()
-    : cube(makeCube()),
-      sphere(makeSphere()),
-      white(glm::vec3(1.0f)),
-      crateDiffuse(TEXTURE_DIR "container2.png", true),
-      crateSpecular(TEXTURE_DIR "container2_specular.png", false),
-      sky(TEXTURE_DIR "skybox/"),
-      shiba(MODEL_DIR "shiba/scene.gltf", textures) {
-}
-
 entt::entity Scene::create(const std::string& name, const Transform& transform) {
     const entt::entity entity = registry.create();
     registry.emplace<Name>(entity, name);

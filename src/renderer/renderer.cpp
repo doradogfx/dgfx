@@ -10,6 +10,9 @@ Renderer::Renderer(int width, int height)
       post(SHADER_DIR "post.vert", SHADER_DIR "post.frag"),
       depth(SHADER_DIR "shadow.vert", SHADER_DIR "shadow.frag"),
       skybox(SHADER_DIR "skybox.vert", SHADER_DIR "skybox.frag"),
+      cube(makeCube()),
+      sphere(makeSphere()),
+      white(glm::vec3(1.0f)),
       sceneTarget(width, height),
       shadowMap(shadowResolution) {
     // The post pass's full-screen triangle comes from gl_VertexID alone, but core profile still requires
@@ -53,7 +56,7 @@ static void setCulling(bool enabled, GLenum face) {
 }
 
 // One mesh with the lit shader, which must already be in use with the per-frame uniforms set.
-void Renderer::drawLit(const Scene& scene, const Mesh& mesh, const Material& material, const glm::mat4& model) {
+void Renderer::drawLit(const Mesh& mesh, const Material& material, const glm::mat4& model) {
     // Normals can't just use the model matrix: a non-uniform scale (like the flattened floor) would
     // tilt them so they no longer point straight out of the surface. The inverse transpose undoes the
     // scale's effect on direction while keeping rotation. mat3 drops translation, directions don't move.
@@ -62,8 +65,8 @@ void Renderer::drawLit(const Scene& scene, const Mesh& mesh, const Material& mat
     lit.setMat4("model", model);
     lit.setMat3("normalMatrix", normalMatrix);
     // Maps go to the units the shader's samplers read (layout binding 0 and 1).
-    (material.diffuseMap ? material.diffuseMap : &scene.white)->bind(0);
-    (material.specularMap ? material.specularMap : &scene.white)->bind(1);
+    (material.diffuseMap ? material.diffuseMap : &white)->bind(0);
+    (material.specularMap ? material.specularMap : &white)->bind(1);
     lit.setVec3("material.diffuse", material.diffuse);
     lit.setVec3("material.specular", material.specular);
     lit.setFloat("material.shininess", material.shininess);
@@ -172,18 +175,19 @@ void Renderer::render(Scene& scene, const Camera& camera, int width, int height)
     lit.setBool("pcf", pcf);
     shadowMap.bindDepth(2);
 
-    lit.setBool("reflections", reflections);
+    lit.setBool("reflections", reflections && scene.sky);
     lit.setBool("fresnel", fresnel);
-    scene.sky.bind(3);
+    if (scene.sky)
+        scene.sky->bind(3);
 
     for (auto [entity, meshRenderer] : registry.view<MeshRenderer>().each())
-        drawLit(scene, *meshRenderer.mesh, meshRenderer.material, scene.worldMatrix(entity));
+        drawLit(*meshRenderer.mesh, meshRenderer.material, scene.worldMatrix(entity));
 
     for (auto [entity, modelRenderer] : registry.view<ModelRenderer>().each()) {
         const glm::mat4 model = modelMatrix(scene, entity, *modelRenderer.model);
 
         for (const Model::Part& part : modelRenderer.model->parts)
-            drawLit(scene, part.mesh, part.material, model);
+            drawLit(part.mesh, part.material, model);
     }
 
     setCulling(faceCulling, GL_BACK);
@@ -196,22 +200,22 @@ void Renderer::render(Scene& scene, const Camera& camera, int width, int height)
     for (const WorldPointLight& p : points) {
         lamp.setMat4("model", glm::scale(glm::translate(glm::mat4(1.0f), p.position), glm::vec3(0.15f)));
         lamp.setVec3("lightColor", p.light.diffuse);
-        scene.sphere.draw();
+        sphere.draw();
         drawCalls++;
     }
 
     // Sky last: its depth is 1.0, so the depth test skips every pixel an object already covered.
     // LEQUAL because it has to pass against the cleared depth, which is also 1.0.
     // Culling off because we're inside the cube, looking at its back faces.
-    if (showSkybox) {
+    if (showSkybox && scene.sky) {
         glDepthFunc(GL_LEQUAL);
         glDisable(GL_CULL_FACE);
 
         skybox.use();
         skybox.setMat4("projection", projection);
         skybox.setMat4("view", view);
-        scene.sky.bind(0);
-        scene.cube.draw();
+        scene.sky->bind(0);
+        cube.draw();
 
         glDepthFunc(GL_LESS);
     }

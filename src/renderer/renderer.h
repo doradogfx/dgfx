@@ -2,8 +2,10 @@
 
 #include "core/camera.h"
 #include "renderer/framebuffer.h"
+#include "renderer/mesh.h"
 #include "renderer/shader.h"
 #include "renderer/shadowmap.h"
+#include "renderer/texture.h"
 #include "scene/scene.h"
 
 class Renderer {
@@ -42,13 +44,16 @@ public:
     Renderer& operator=(const Renderer&) = delete;
 
 private:
-    void drawLit(const Scene& scene, const Mesh& mesh, const Material& material, const glm::mat4& model);
+    void drawLit(const Mesh& mesh, const Material& material, const glm::mat4& model);
 
     Shader lit;
     Shader lamp;
     Shader post;
     Shader depth;
     Shader skybox;
+    Mesh cube;   // the sky
+    Mesh sphere; // the point light lamps
+    Texture white; // bound wherever a material has no map
     Framebuffer sceneTarget;
     ShadowMap shadowMap;
     GLuint emptyVao = 0;

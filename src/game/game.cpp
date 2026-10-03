@@ -12,8 +12,11 @@ static constexpr float kArenaHalfSize = 19.0f; // inside the 40x40 floor
 static constexpr float kPlayerRadius = 0.4f;
 static constexpr float kEnemyScale = 0.8f;
 
-Game::Game(Scene& scene) {
-    scene.registry.emplace<MeshRenderer>(scene.create("Floor", {.position = {0.0f, kGroundHeight - 0.05f, 0.0f}, .scale = {40.0f, 0.1f, 40.0f}}), &scene.cube, rubber({0.6f, 0.6f, 0.6f}));
+Game::Game(Scene& scene, Assets& assets) {
+    scene.sky = &assets.cubemap("skybox/");
+    enemyMesh = &assets.mesh("sphere");
+
+    scene.registry.emplace<MeshRenderer>(scene.create("Floor", {.position = {0.0f, kGroundHeight - 0.05f, 0.0f}, .scale = {40.0f, 0.1f, 40.0f}}), &assets.mesh("cube"), rubber({0.6f, 0.6f, 0.6f}));
 
     // Only the sun lights this scene, so more ambient than the demo's.
     DirLight sun;
@@ -28,8 +31,8 @@ Game::Game(Scene& scene) {
     scene.registry.emplace<Spawner>(scene.create("Enemy spawner"));
 
     // The model faces +Z but entities face -Z, so it's turned around on a child.
-    const entt::entity model = scene.create("Shiba", {.rotation = {0.0f, 180.0f, 0.0f}, .scale = glm::vec3(scene.shiba.fitScale(1.2f)), .parent = player});
-    scene.registry.emplace<ModelRenderer>(model, &scene.shiba);
+    const entt::entity model = scene.create("Shiba", {.rotation = {0.0f, 180.0f, 0.0f}, .scale = glm::vec3(assets.model("shiba/scene.gltf").fitScale(1.2f)), .parent = player});
+    scene.registry.emplace<ModelRenderer>(model, &assets.model("shiba/scene.gltf"));
 }
 
 void Game::update(Scene& scene, Camera& camera, const Input& input, float dt) {
@@ -115,7 +118,7 @@ void Game::updateEnemies(Scene& scene, float dt) {
 
         const entt::entity enemy = scene.create("Enemy", {.position = position, .scale = glm::vec3(kEnemyScale)});
         registry.emplace<Enemy>(enemy);
-        registry.emplace<MeshRenderer>(enemy, &scene.sphere, enemyMaterial);
+        registry.emplace<MeshRenderer>(enemy, enemyMesh, enemyMaterial);
     }
 
     // Spawned enemies follow the player

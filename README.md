@@ -23,7 +23,7 @@ A simplified 3D survivors-like built on the engine.
 - **Lighting**: Blinn-Phong with multiple lights at once: a directional sun, up to 4 point lights (distance attenuation) and a camera flashlight (spot with soft edges). Per-object materials: diffuse/specular colors and shininess, with optional lighting maps (diffuse + specular textures) for per-pixel materials. Environment reflections and refraction from the skybox, with Fresnel. Directional shadow mapping for the sun. Gamma-correct: lighting is computed in linear space (sRGB textures and framebuffer).
 - **Post-processing**: the scene renders to an off-screen framebuffer, then a full-screen pass applies effects (grayscale, invert, blur, sharpen, edge detection) and a user gamma adjustment.
 - **Skybox**: cubemap environment rendered behind the scene (depth at the far plane, camera translation removed).
-- **Model loading** with Assimp (glTF, OBJ): meshes and their materials (diffuse/specular textures, double-sided surfaces), with a texture cache so shared images load once.
+- **Model loading** with Assimp (glTF, OBJ): meshes and their materials (diffuse/specular textures, double-sided surfaces), with an asset manager that loads meshes, textures, models and skyboxes on first use and shares them.
 - **Entities and components** with EnTT: parent/child transform hierarchy and a scene tree and inspector in the debug panel.
 - **Debug UI** with Dear ImGui: separate panels for the scene hierarchy, the selected entity's components, and rendering and display settings, plus a stats overlay.
 

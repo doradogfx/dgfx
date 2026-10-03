@@ -79,6 +79,7 @@ target_include_directories(glad PUBLIC external/glad/include)
 
 add_executable(dgfx
     src/main.cpp
+    src/assets/assets.cpp
     src/assets/model.cpp
     src/core/input.cpp
     src/game/game.cpp

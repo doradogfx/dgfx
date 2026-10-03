@@ -1,5 +1,6 @@
 #pragma once
 
+#include "assets/assets.h"
 #include "core/camera.h"
 #include "core/input.h"
 #include "renderer/material.h"
@@ -37,7 +38,7 @@ struct Spawner {
 };
 
 struct Game {
-    explicit Game(Scene& scene); // builds the game level in an empty scene: floor, sun, player, enemy spawner
+    Game(Scene& scene, Assets& assets); // builds the game level in an empty scene: floor, sun, player, enemy spawner
 
     void update(Scene& scene, Camera& camera, const Input& input, float dt);
 
@@ -51,6 +52,7 @@ struct Game {
 private:
     void updateEnemies(Scene& scene, float dt);
 
+    const Mesh* enemyMesh = nullptr;
     std::mt19937 rng{1};
     Material enemyMaterial{nullptr, nullptr, glm::vec3(0.6f, 0.02f, 0.02f), glm::vec3(0.3f), 32.0f}; // linear red plastic
 };

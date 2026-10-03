@@ -1,6 +1,7 @@
 #include <glad/glad.h> // must come before GLFW so GLFW doesn't pull in the system GL header
 #include <GLFW/glfw3.h>
 
+#include "assets/assets.h"
 #include "core/camera.h"
 #include "core/input.h"
 #include "game/game.h"
@@ -58,6 +59,7 @@ int main() {
         int width, height;
         glfwGetFramebufferSize(window, &width, &height);
 
+        Assets assets; // before the scene: components point into it
         Scene scene;
         Renderer renderer(width, height);
 
@@ -65,7 +67,7 @@ int main() {
 
         // F2 switches between the game level (a Game exists) and the engine demo (none, so always fly camera).
         std::optional<Game> game;
-        game.emplace(scene);
+        game.emplace(scene, assets);
         bool flyMode = false;
 
         Input input(window); // before initUI, so ImGui chains to its scroll callback
@@ -95,11 +97,11 @@ int main() {
 
                 if (game) {
                     game.reset();
-                    buildDemo(scene);
+                    buildDemo(scene, assets);
                     camera.position = glm::vec3(0.0f, 2.0f, 6.0f);
                     camera.pitch = -15.0f;
                 } else {
-                    game.emplace(scene);
+                    game.emplace(scene, assets);
                 }
             }
 
