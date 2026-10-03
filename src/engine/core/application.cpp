@@ -41,9 +41,6 @@ void Application::run() {
         const float dt = static_cast<float>(now - lastTime);
         lastTime = now;
 
-        if (glfwGetKey(handle, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-            glfwSetWindowShouldClose(handle, GLFW_TRUE);
-
         input.update();
         update(dt);
 

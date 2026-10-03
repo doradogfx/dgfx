@@ -103,6 +103,9 @@ add_library(dgfx_engine STATIC
     src/engine/scene/component_registry.cpp
     src/engine/scene/scene.cpp
     src/engine/scene/scene_io.cpp
+    src/engine/ui/display_panel.cpp
+    src/engine/ui/renderer_panel.cpp
+    src/engine/ui/scene_panels.cpp
     src/engine/ui/ui.cpp)
 target_link_libraries(dgfx_engine PUBLIC glfw glad glm::glm imgui assimp::assimp EnTT::EnTT nlohmann_json::nlohmann_json)
 target_include_directories(dgfx_engine PUBLIC src/engine PRIVATE ${stb_SOURCE_DIR})
