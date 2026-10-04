@@ -27,8 +27,6 @@ public:
     glm::vec3 boundsMin{0.0f};
     glm::vec3 boundsMax{0.0f};
 
-    // Uniform scale that makes the model's largest dimension `size` units.
-    float fitScale(float size) const;
     // Bottom center of the bounds: the point that rests on the ground when placing the model.
     glm::vec3 base() const;
 };

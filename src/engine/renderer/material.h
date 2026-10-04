@@ -26,8 +26,3 @@ inline glm::vec3 srgb(glm::vec3 color) {
 inline Material plastic(glm::vec3 color, float shininess = 128.0f) {
     return {nullptr, nullptr, srgb(color), glm::vec3(0.5f), shininess};
 }
-
-// Rubber: the surface color, almost no highlight, and what little there is is wide and dull.
-inline Material rubber(glm::vec3 color) {
-    return {nullptr, nullptr, srgb(color), glm::vec3(0.1f), 8.0f};
-}

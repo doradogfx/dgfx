@@ -109,12 +109,6 @@ Model::Model(const std::string& path, TextureCache& textures) {
     }
 }
 
-float Model::fitScale(float size) const {
-    const glm::vec3 extent = boundsMax - boundsMin;
-    const float largest = std::max({extent.x, extent.y, extent.z});
-    return largest > 0.0f ? size / largest : 1.0f;
-}
-
 glm::vec3 Model::base() const {
     return {(boundsMin.x + boundsMax.x) * 0.5f, boundsMin.y, (boundsMin.z + boundsMax.z) * 0.5f};
 }

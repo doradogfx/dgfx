@@ -42,7 +42,6 @@ struct Panels {
     bool renderer = true;
     bool display = true;
     bool stats = true;
-    bool demo = false; // ImGui's demo window: a catalog of every widget
 };
 
 static Panels panels;
@@ -121,8 +120,6 @@ void debugUI(GLFWwindow* window, UiContext& context) {
             ImGui::MenuItem("Renderer", nullptr, &panels.renderer);
             ImGui::MenuItem("Display", nullptr, &panels.display);
             ImGui::MenuItem("Stats", nullptr, &panels.stats);
-            ImGui::Separator();
-            ImGui::MenuItem("ImGui demo", nullptr, &panels.demo);
             ImGui::EndMenu();
         }
 
@@ -177,7 +174,4 @@ void debugUI(GLFWwindow* window, UiContext& context) {
 
     if (panels.stats)
         statsOverlay(context, margin);
-
-    if (panels.demo)
-        ImGui::ShowDemoWindow(&panels.demo);
 }
