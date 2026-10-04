@@ -87,6 +87,12 @@
         "jumpSpeed": 7.0,
         "speed": 5.0
       },
+      "Weapon": {
+        "damage": 10.0,
+        "interval": 0.5,
+        "projectileSpeed": 14.0,
+        "range": 15.0
+      },
       "name": "Player",
       "transform": {
         "position": [
@@ -108,6 +114,7 @@
     },
     {
       "Spawner": {
+        "enemyHealth": 20.0,
         "interval": 1.0,
         "maxEnemies": 100,
         "ringRadius": 16.0

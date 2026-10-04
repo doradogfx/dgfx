@@ -36,6 +36,7 @@ struct Spawner {
     float timer = 0.0f;
     int maxEnemies = 100;
     float ringRadius = 16.0f;
+    float enemyHealth = 20.0f; // health of each new enemy
 };
 
 struct Game {
@@ -44,6 +45,7 @@ struct Game {
     void update(Scene& scene, Camera& camera, const Input& input, float dt);
 
     entt::entity player;
+    int kills = 0;
 
     // Orbit camera, in the Camera's conventions (yaw -90 looks down -Z, negative pitch looks down).
     float cameraYaw = -90.0f;
@@ -56,6 +58,7 @@ private:
     const Mesh* enemyMesh = nullptr;
     std::mt19937 rng{1};
     Material enemyMaterial{nullptr, nullptr, glm::vec3(0.6f, 0.02f, 0.02f), glm::vec3(0.3f), 32.0f}; // linear red plastic
+    Material projectileMaterial = plastic({1.0f, 0.85f, 0.2f}, 64.0f);
 };
 
 // Registers the game's components (and the demo's Rotator) with the inspector.

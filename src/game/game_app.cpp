@@ -40,6 +40,9 @@ void GameApp::update(float dt) {
 void GameApp::statsOverlay() {
     ImGui::Text("%zu enemies", static_cast<size_t>(scene.registry.view<const Enemy>().size()));
 
+    if (game)
+        ImGui::Text("%d kills", game->kills);
+
     for (auto [entity, health, player] : scene.registry.view<const Health, const Player>().each())
         ImGui::Text("Health %.0f / %.0f", health.current, health.max);
 

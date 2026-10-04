@@ -10,6 +10,7 @@ A simplified 3D survivors-like built on the engine.
 
 - **Player**: runs relative to the camera, turns to face where it's going, and jumps with gravity.
 - **Enemies**: spawn on a ring around the player, chase it and drain its health on contact.
+- **Automatic weapon**: shoots projectiles at the nearest enemy in range. Enemies have health and are destroyed at zero; the stats overlay counts kills.
 - **Third-person camera**: orbits the player, with adjustable distance.
 
 ## Engine features

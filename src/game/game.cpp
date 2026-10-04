@@ -1,5 +1,7 @@
 #include "game/game.h"
 
+#include "game/weapons.h"
+
 #include <GLFW/glfw3.h>
 
 #include <algorithm>
@@ -87,6 +89,8 @@ void Game::update(Scene& scene, Camera& camera, const Input& input, float dt) {
     camera.position.y = std::max(camera.position.y, kGroundHeight + 0.2f);
 
     updateEnemies(scene, dt);
+    updateWeapon(scene, player, *enemyMesh, projectileMaterial, dt);
+    kills += updateProjectiles(scene, dt);
 }
 
 void Game::updateEnemies(Scene& scene, float dt) {
@@ -114,6 +118,7 @@ void Game::updateEnemies(Scene& scene, float dt) {
 
         const entt::entity enemy = scene.create("Enemy", {.position = position, .scale = glm::vec3(kEnemyScale)});
         registry.emplace<Enemy>(enemy);
+        registry.emplace<Health>(enemy, Health{spawner.enemyHealth, spawner.enemyHealth});
         registry.emplace<Transient>(enemy); // spawned while playing, not part of the level file
         registry.emplace<MeshRenderer>(enemy, enemyMesh, enemyMaterial);
     }
@@ -135,10 +140,14 @@ void Game::updateEnemies(Scene& scene, float dt) {
     // Placeholder game over
     if (health.current <= 0.0f) {
         health.current = health.max;
+        kills = 0;
 
-        std::vector<entt::entity> enemies;
+        std::vector<entt::entity> enemies; // and the projectiles
 
         for (entt::entity entity : registry.view<Enemy>())
+            enemies.push_back(entity);
+
+        for (entt::entity entity : registry.view<Projectile>())
             enemies.push_back(entity);
 
         registry.destroy(enemies.begin(), enemies.end());
