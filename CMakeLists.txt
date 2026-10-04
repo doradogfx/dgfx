@@ -121,6 +121,7 @@ target_compile_definitions(dgfx_engine PRIVATE
 # The game: an executable on top of the engine. src/ is its include root, for "game/game.h".
 add_executable(dgfx
     src/main.cpp
+    src/game/collision.cpp
     src/game/components.cpp
     src/game/demo.cpp
     src/game/game.cpp

@@ -1,5 +1,6 @@
 #include "game/game.h"
 
+#include "game/collision.h"
 #include "game/weapons.h"
 
 #include <GLFW/glfw3.h>
@@ -81,6 +82,9 @@ void Game::update(Scene& scene, Camera& camera, const Input& input, float dt) {
         p.grounded = true;
     }
 
+    transform.position.x = std::clamp(transform.position.x, -kArenaHalfSize, kArenaHalfSize);
+    transform.position.z = std::clamp(transform.position.z, -kArenaHalfSize, kArenaHalfSize);
+
     // Orbit: look at a point above the feet from `cameraDistance` behind it, never below the floor.
     camera.yaw = cameraYaw;
     camera.pitch = cameraPitch;
@@ -123,7 +127,7 @@ void Game::updateEnemies(Scene& scene, float dt) {
         registry.emplace<MeshRenderer>(enemy, enemyMesh, enemyMaterial);
     }
 
-    // Spawned enemies follow the player
+    // The enemies follow the player.
     for (auto [entity, transform, enemy] : registry.view<Transform, Enemy>().each()) {
         glm::vec3 toPlayer = playerPos - transform.position;
         toPlayer.y = 0.0f;
@@ -131,9 +135,17 @@ void Game::updateEnemies(Scene& scene, float dt) {
 
         if (distance > 0.001f)
             transform.position += toPlayer / distance * std::min(enemy.speed * dt, distance);
+    }
 
-        // If they are close to the player, damage it
-        if (distance < enemy.radius + kPlayerRadius)
+    resolveEnemyCollisions(scene, playerPos, kPlayerRadius, kArenaHalfSize);
+
+    // An enemy that touches the player removes health. The collision step moves it out to exactly the sum of
+    // the two radii, so the test adds a small margin.
+    for (auto [entity, transform, enemy] : registry.view<Transform, Enemy>().each()) {
+        glm::vec3 toPlayer = playerPos - transform.position;
+        toPlayer.y = 0.0f;
+
+        if (glm::length(toPlayer) < enemy.radius + kPlayerRadius + 0.1f)
             health.current -= enemy.damage * dt;
     }
 
