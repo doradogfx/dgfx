@@ -1,6 +1,7 @@
 #include "game/game_app.h"
 
 #include "game/demo.h"
+#include "game/xp.h"
 
 #include <GLFW/glfw3.h>
 #include <imgui.h>
@@ -42,6 +43,9 @@ void GameApp::statsOverlay() {
 
     if (game)
         ImGui::Text("%d kills", game->kills);
+
+    for (auto [entity, experience, player] : scene.registry.view<const Experience, const Player>().each())
+        ImGui::Text("Level %d (%.0f / %.0f XP)", experience.level, experience.xp, xpToNext(experience));
 
     for (auto [entity, health, player] : scene.registry.view<const Health, const Player>().each())
         ImGui::Text("Health %.0f / %.0f", health.current, health.max);

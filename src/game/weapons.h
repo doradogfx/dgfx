@@ -7,6 +7,8 @@
 #include <entt/entt.hpp>
 #include <glm/glm.hpp>
 
+#include <vector>
+
 // The player weapon. It shoots at the nearest enemy by itself. Put it on the player entity.
 struct Weapon {
     float damage = 10.0f;          // health that one hit removes
@@ -27,6 +29,12 @@ struct Projectile {
 // Fires the weapon at the nearest enemy in range when the weapon is ready.
 void updateWeapon(Scene& scene, entt::entity player, const Mesh& mesh, const Material& material, float dt);
 
+// Where an enemy died, and how much XP it gives.
+struct Death {
+    glm::vec3 position;
+    float xp;
+};
+
 // Moves the projectiles and applies the hits. Destroys the finished projectiles and the dead enemies.
-// Returns the number of enemies that died.
-int updateProjectiles(Scene& scene, float dt);
+// Returns one Death for each enemy that died.
+std::vector<Death> updateProjectiles(Scene& scene, float dt);

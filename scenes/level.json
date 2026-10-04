@@ -79,6 +79,12 @@
       }
     },
     {
+      "Experience": {
+        "base": 5.0,
+        "pickupRadius": 3.0,
+        "pickupSpeed": 10.0,
+        "step": 3.0
+      },
       "Health": {
         "current": 100.0,
         "max": 100.0

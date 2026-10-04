@@ -51,7 +51,7 @@ void updateWeapon(Scene& scene, entt::entity player, const Mesh& mesh, const Mat
     registry.emplace<MeshRenderer>(shot, &mesh, material);
 }
 
-int updateProjectiles(Scene& scene, float dt) {
+std::vector<Death> updateProjectiles(Scene& scene, float dt) {
     entt::registry& registry = scene.registry;
 
     // The entities to destroy. Destroy them after the loops, because destroying inside a loop breaks the loop.
@@ -76,13 +76,13 @@ int updateProjectiles(Scene& scene, float dt) {
         }
     }
 
-    // Count each dead enemy one time, even if two projectiles hit it in the same frame.
-    int kills = 0;
+    // Each dead enemy gives one death, even if two projectiles hit it in the same frame.
+    std::vector<Death> deaths;
 
-    for (auto [entity, enemy, health] : registry.view<Enemy, Health>().each()) {
+    for (auto [entity, transform, enemy, health] : registry.view<Transform, Enemy, Health>().each()) {
         if (health.current <= 0.0f) {
             finished.push_back(entity);
-            kills++;
+            deaths.push_back({transform.position, enemy.xpValue});
         }
     }
 
@@ -90,5 +90,5 @@ int updateProjectiles(Scene& scene, float dt) {
     finished.erase(std::unique(finished.begin(), finished.end()), finished.end());
     registry.destroy(finished.begin(), finished.end());
 
-    return kills;
+    return deaths;
 }

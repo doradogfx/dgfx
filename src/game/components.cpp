@@ -1,6 +1,7 @@
 #include "game/demo.h"
 #include "game/game.h"
 #include "game/weapons.h"
+#include "game/xp.h"
 
 #include <glm/gtc/type_ptr.hpp>
 #include <imgui.h>
@@ -9,7 +10,8 @@
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Rotator, degreesPerSecond, enabled)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Player, speed, jumpSpeed)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Health, current, max)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Enemy, speed, radius, damage)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Enemy, speed, radius, damage, xpValue)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Experience, base, step, pickupRadius, pickupSpeed)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Spawner, interval, maxEnemies, ringRadius, enemyHealth)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Weapon, damage, interval, range, projectileSpeed)
 
@@ -42,6 +44,14 @@ void registerGameComponents(ComponentRegistry& components) {
         ImGui::DragFloat("Projectile speed", &weapon.projectileSpeed, 0.1f, 1.0f, 100.0f, "%.1f u/s");
     });
 
+    components.add<Experience>("Experience", [](Experience& experience) {
+        ImGui::TextDisabled("Level %d, %.0f / %.0f XP", experience.level, experience.xp, xpToNext(experience));
+        ImGui::DragFloat("First level XP", &experience.base, 0.1f, 1.0f, 1000.0f);
+        ImGui::DragFloat("More XP each level", &experience.step, 0.1f, 0.0f, 1000.0f);
+        ImGui::DragFloat("Pickup radius", &experience.pickupRadius, 0.1f, 0.0f, 50.0f);
+        ImGui::DragFloat("Pickup speed", &experience.pickupSpeed, 0.1f, 0.0f, 100.0f, "%.1f u/s");
+    });
+
     components.add<Health>("Health", [](Health& health) {
         ImGui::DragFloat("Current", &health.current, 1.0f, 0.0f, health.max);
         ImGui::DragFloat("Max", &health.max, 1.0f, 1.0f, 10000.0f);
@@ -51,6 +61,7 @@ void registerGameComponents(ComponentRegistry& components) {
         ImGui::DragFloat("Speed", &enemy.speed, 0.1f, 0.0f, 50.0f, "%.1f u/s");
         ImGui::DragFloat("Radius", &enemy.radius, 0.01f, 0.0f, 5.0f);
         ImGui::DragFloat("Damage", &enemy.damage, 0.5f, 0.0f, 1000.0f, "%.1f /s");
+        ImGui::DragFloat("XP value", &enemy.xpValue, 0.1f, 0.0f, 1000.0f);
     });
 
     components.add<Spawner>("Spawner", [](Spawner& spawner) {

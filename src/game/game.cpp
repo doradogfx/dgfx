@@ -2,6 +2,7 @@
 
 #include "game/collision.h"
 #include "game/weapons.h"
+#include "game/xp.h"
 
 #include <GLFW/glfw3.h>
 
@@ -94,7 +95,14 @@ void Game::update(Scene& scene, Camera& camera, const Input& input, float dt) {
 
     updateEnemies(scene, dt);
     updateWeapon(scene, player, *enemyMesh, projectileMaterial, dt);
-    kills += updateProjectiles(scene, dt);
+
+    // Each dead enemy drops an orb on the floor where it died.
+    for (const Death& death : updateProjectiles(scene, dt)) {
+        kills++;
+        spawnOrb(scene, *enemyMesh, orbMaterial, {death.position.x, kGroundHeight + 0.2f, death.position.z}, death.xp);
+    }
+
+    updateOrbs(scene, player, kPlayerRadius, dt);
 }
 
 void Game::updateEnemies(Scene& scene, float dt) {
@@ -154,13 +162,21 @@ void Game::updateEnemies(Scene& scene, float dt) {
         health.current = health.max;
         kills = 0;
 
-        std::vector<entt::entity> enemies; // and the projectiles
+        std::vector<entt::entity> enemies; // and the projectiles and the orbs
 
         for (entt::entity entity : registry.view<Enemy>())
             enemies.push_back(entity);
 
         for (entt::entity entity : registry.view<Projectile>())
             enemies.push_back(entity);
+
+        for (entt::entity entity : registry.view<XpOrb>())
+            enemies.push_back(entity);
+
+        if (Experience* experience = registry.try_get<Experience>(player)) {
+            experience->level = 1;
+            experience->xp = 0.0f;
+        }
 
         registry.destroy(enemies.begin(), enemies.end());
     }
