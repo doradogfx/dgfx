@@ -63,3 +63,6 @@ CMakeSettings.json
 # Dear ImGui window layout, saved wherever the exe runs
 imgui.ini
 
+
+# graphify knowledge graph (also its cache under src/)
+graphify-out/
