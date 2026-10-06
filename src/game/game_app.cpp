@@ -52,3 +52,42 @@ void GameApp::statsOverlay() {
 
     ImGui::TextDisabled("F1: fly camera");
 }
+
+void GameApp::gameUI() {
+    const bool choosing = game && game->pendingLevelUps > 0;
+
+    // A free cursor while a choice is open, so the player can click it. Every frame, because a click outside
+    // the window captures the cursor again. Captured again when the choice closes, to play.
+    if (choosing)
+        input.setCaptured(false);
+    else if (wasChoosing)
+        input.setCaptured(true);
+
+    wasChoosing = choosing;
+
+    if (!choosing)
+        return;
+
+    const ImVec2 screen = ImGui::GetIO().DisplaySize;
+    ImGui::SetNextWindowPos(ImVec2(screen.x * 0.5f, screen.y * 0.5f), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+
+    const ImGuiWindowFlags flags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove |
+                                   ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize |
+                                   ImGuiWindowFlags_NoSavedSettings;
+
+    if (ImGui::Begin("Level up!", nullptr, flags)) {
+        ImGui::Text("Choose an upgrade");
+        ImGui::Spacing();
+
+        const ImVec2 buttonSize(ImGui::GetFontSize() * 16.0f, ImGui::GetFontSize() * 2.5f);
+
+        for (int i = 0; i < static_cast<int>(game->choices.size()); i++) {
+            if (ImGui::Button(upgradeLabel(game->choices[i]), buttonSize)) {
+                game->choose(scene, i);
+                break; // the choices can change after a choice
+            }
+        }
+    }
+
+    ImGui::End();
+}

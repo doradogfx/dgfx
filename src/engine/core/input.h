@@ -25,12 +25,14 @@ public:
     glm::vec2 look{0.0f}; // mouse movement in pixels this frame, 0 when not captured
     float scroll = 0.0f;  // wheel notches this frame, 0 over ImGui
 
+    // Captured: cursor hidden and locked. Free: normal cursor, for the UI.
+    void setCaptured(bool value);
+
     // The window's user pointer points at this object, so it must not be copied or moved.
     Input(const Input&) = delete;
     Input& operator=(const Input&) = delete;
 
 private:
-    void setCaptured(bool value);
 
     GLFWwindow* window;
     bool captured = false;

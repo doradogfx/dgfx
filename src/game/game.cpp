@@ -36,6 +36,10 @@ void Game::update(Scene& scene, Camera& camera, const Input& input, float dt) {
     if (!scene.registry.valid(player) || !scene.registry.all_of<Player, Health>(player))
         return;
 
+    // Paused while a level-up waits for a choice.
+    if (pendingLevelUps > 0)
+        return;
+
     Transform& transform = scene.registry.get<Transform>(player);
     Player& p = scene.registry.get<Player>(player);
 
@@ -102,7 +106,12 @@ void Game::update(Scene& scene, Camera& camera, const Input& input, float dt) {
         spawnOrb(scene, *enemyMesh, orbMaterial, {death.position.x, kGroundHeight + 0.2f, death.position.z}, death.xp);
     }
 
-    updateOrbs(scene, player, kPlayerRadius, dt);
+    const int levels = updateOrbs(scene, player, kPlayerRadius, dt);
+
+    if (levels > 0 && pendingLevelUps == 0)
+        rollChoices();
+
+    pendingLevelUps += levels;
 }
 
 void Game::updateEnemies(Scene& scene, float dt) {
@@ -161,6 +170,7 @@ void Game::updateEnemies(Scene& scene, float dt) {
     if (health.current <= 0.0f) {
         health.current = health.max;
         kills = 0;
+        pendingLevelUps = 0;
 
         std::vector<entt::entity> enemies; // and the projectiles and the orbs
 
@@ -180,4 +190,25 @@ void Game::updateEnemies(Scene& scene, float dt) {
 
         registry.destroy(enemies.begin(), enemies.end());
     }
+}
+
+void Game::rollChoices() {
+    std::array<Upgrade, static_cast<size_t>(Upgrade::Count)> all;
+
+    for (size_t i = 0; i < all.size(); i++)
+        all[i] = static_cast<Upgrade>(i);
+
+    std::shuffle(all.begin(), all.end(), rng);
+    std::copy_n(all.begin(), choices.size(), choices.begin());
+}
+
+void Game::choose(Scene& scene, int index) {
+    if (pendingLevelUps == 0)
+        return;
+
+    applyUpgrade(scene, player, choices[index]);
+    pendingLevelUps--;
+
+    if (pendingLevelUps > 0)
+        rollChoices();
 }

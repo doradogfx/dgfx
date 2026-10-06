@@ -16,8 +16,10 @@ protected:
     void update(float dt) override;
     void openScene(const std::string& file) override;
     void statsOverlay() override;
+    void gameUI() override;
 
 private:
     std::optional<Game> game;
     bool flyMode = false;
+    bool wasChoosing = false; // a level-up choice was open last frame
 };

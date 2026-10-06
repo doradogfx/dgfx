@@ -93,6 +93,7 @@ void Application::run() {
         };
 
         debugUI(handle, ui);
+        gameUI();
 
         renderer.render(scene, camera, size.x, size.y);
         endUI();

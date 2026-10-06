@@ -6,9 +6,11 @@
 #include "renderer/material.h"
 #include "scene/component_registry.h"
 #include "scene/scene.h"
+#include "game/upgrades.h"
 
 #include <entt/entt.hpp>
 
+#include <array>
 #include <random>
 
 struct Player {
@@ -48,6 +50,13 @@ struct Game {
     entt::entity player;
     int kills = 0;
 
+    // Level-ups that wait for a choice. While one waits, the game is paused.
+    int pendingLevelUps = 0;
+    std::array<Upgrade, 3> choices{};
+
+    // Applies one of the 3 choices and closes that level-up.
+    void choose(Scene& scene, int index);
+
     // Orbit camera, in the Camera's conventions (yaw -90 looks down -Z, negative pitch looks down).
     float cameraYaw = -90.0f;
     float cameraPitch = -20.0f;
@@ -55,6 +64,7 @@ struct Game {
 
 private:
     void updateEnemies(Scene& scene, float dt);
+    void rollChoices(); // 3 different random upgrades
 
     const Mesh* enemyMesh = nullptr;
     std::mt19937 rng{1};

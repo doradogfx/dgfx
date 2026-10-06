@@ -35,6 +35,9 @@ protected:
     // the default just loads the scene. Called between frames, never in the middle of one.
     virtual void openScene(const std::string& file) { loadScene(file); }
 
+    // Game windows, drawn every frame after the debug UI (menus, HUD, choices).
+    virtual void gameUI() {}
+
     // Extra lines for the stats overlay.
     virtual void statsOverlay() {}
 
