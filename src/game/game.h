@@ -6,11 +6,13 @@
 #include "renderer/material.h"
 #include "scene/component_registry.h"
 #include "scene/scene.h"
+#include "game/terrain.h"
 #include "game/upgrades.h"
 
 #include <entt/entt.hpp>
 
 #include <array>
+#include <memory>
 #include <random>
 
 struct Player {
@@ -77,6 +79,12 @@ struct Game {
 private:
     void updateEnemies(Scene& scene, float dt);
     void rollChoices(); // 3 different random upgrades
+    void updateTerrain(Scene& scene); // builds the mesh again when the Terrain settings change
+
+    // A copy of the level's Terrain component. Flat ground when the level has none.
+    Terrain terrain{.amplitude = 0.0f};
+    std::unique_ptr<Mesh> terrainMesh;
+    entt::entity terrainMeshEntity = entt::null; // Transient: the scene file does not save it
 
     const Mesh* enemyMesh = nullptr;
     bool bossSpawned = false;

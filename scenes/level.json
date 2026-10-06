@@ -1,31 +1,25 @@
 {
   "entities": [
     {
-      "Mesh renderer": {
-        "material": {
-          "diffuse": [
-            0.32503697,
-            0.32503697,
-            0.32503697
-          ],
-          "doubleSided": false,
-          "ior": 1.52,
-          "reflectivity": 0.0,
-          "refractivity": 0.0,
-          "shininess": 8.0,
-          "specular": [
-            0.1,
-            0.1,
-            0.1
-          ]
-        },
-        "mesh": "cube"
+      "Terrain": {
+        "amplitude": 1.5,
+        "base": -0.5,
+        "color": [
+          0.42,
+          0.5,
+          0.3
+        ],
+        "frequency": 0.08,
+        "octaves": 4,
+        "resolution": 128,
+        "seed": 0,
+        "size": 40.0
       },
-      "name": "Floor",
+      "name": "Terrain",
       "transform": {
         "position": [
           0.0,
-          -0.55,
+          0.0,
           0.0
         ],
         "rotation": [
@@ -34,9 +28,9 @@
           0.0
         ],
         "scale": [
-          40.0,
-          0.1,
-          40.0
+          1.0,
+          1.0,
+          1.0
         ]
       }
     },

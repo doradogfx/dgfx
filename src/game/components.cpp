@@ -1,5 +1,6 @@
 #include "game/demo.h"
 #include "game/game.h"
+#include "game/terrain.h"
 #include "game/weapons.h"
 #include "game/xp.h"
 
@@ -15,6 +16,7 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Experience, base, step, pickupRa
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Spawner, interval, minInterval, maxEnemies, ringRadius, ramp, enemyHealth,
                                                 enemySpeed, maxEnemySpeed, enemyDamage, bossTime, bossHealth)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Weapon, damage, interval, range, projectileSpeed)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Terrain, size, resolution, base, amplitude, frequency, octaves, seed, color)
 
 // A tag has nothing to save.
 static void to_json(Json& json, const FollowCamera&) {
@@ -77,5 +79,16 @@ void registerGameComponents(ComponentRegistry& components) {
         ImGui::DragFloat("Enemy damage", &spawner.enemyDamage, 0.5f, 0.0f, 1000.0f, "%.1f /s");
         ImGui::DragFloat("Boss time", &spawner.bossTime, 1.0f, 0.0f, 3600.0f, "%.0f s");
         ImGui::DragFloat("Boss health", &spawner.bossHealth, 10.0f, 1.0f, 100000.0f);
+    });
+
+    components.add<Terrain>("Terrain", [](Terrain& terrain) {
+        ImGui::DragFloat("Size", &terrain.size, 0.5f, 1.0f, 500.0f);
+        ImGui::DragInt("Resolution", &terrain.resolution, 1.0f, 1, 512);
+        ImGui::DragFloat("Base", &terrain.base, 0.05f);
+        ImGui::DragFloat("Amplitude", &terrain.amplitude, 0.05f, 0.0f, 50.0f);
+        ImGui::DragFloat("Frequency", &terrain.frequency, 0.001f, 0.001f, 1.0f, "%.3f");
+        ImGui::DragInt("Octaves", &terrain.octaves, 0.1f, 1, 8);
+        ImGui::DragInt("Seed", &terrain.seed);
+        ImGui::ColorEdit3("Color", glm::value_ptr(terrain.color));
     });
 }

@@ -28,8 +28,8 @@ int updateOrbs(Scene& scene, entt::entity player, float playerRadius, float dt) 
     std::vector<entt::entity> taken; // Destroy them after the loop, because destroying inside a loop breaks the loop.
 
     for (auto [entity, transform, orb] : registry.view<Transform, XpOrb>().each()) {
-        glm::vec3 toPlayer = playerPosition - transform.position;
-        toPlayer.y = 0.0f;
+        // In 3D, so the orb also goes up or down a hill to the player.
+        const glm::vec3 toPlayer = playerPosition - transform.position;
         const float distance = glm::length(toPlayer);
 
         if (distance < playerRadius + kOrbRadius) {

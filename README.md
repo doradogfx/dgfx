@@ -8,6 +8,7 @@ dgfx is a C++20 / OpenGL 4.6 game engine written as a learning project, together
 
 A simplified 3D survivors-like built on the engine.
 
+- **Terrain**: hills made from Perlin noise, with a new random seed each run. The player, the enemies and the XP orbs follow the ground. Size, height, frequency and seed can be changed live in the inspector.
 - **Player**: runs relative to the camera, turns to face where it's going, and jumps with gravity.
 - **Enemies**: spawn on a ring around the player, chase it and drain its health on contact. They collide: they push each other apart, they cannot overlap the player, and everyone stays inside the arena.
 - **Automatic weapon**: shoots projectiles at the nearest enemy in range. Enemies have health and are destroyed at zero; the stats overlay counts kills.

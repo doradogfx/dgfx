@@ -11,9 +11,8 @@
 #include <stdexcept>
 #include <vector>
 
-static constexpr float kGroundHeight = -0.5f; // top of the floor
 static constexpr float kGravity = 20.0f;      // stronger than real gravity: snappier jumps
-static constexpr float kArenaHalfSize = 19.0f; // inside the 40x40 floor
+static constexpr float kArenaHalfSize = 19.0f; // inside the 40x40 terrain
 static constexpr float kPlayerRadius = 0.4f;
 static constexpr float kEnemyScale = 0.8f;
 
@@ -29,12 +28,50 @@ Game::Game(Scene& scene, Assets& assets) {
 
     if (!found)
         throw std::runtime_error("The level has no Player entity");
+
+    // New hills each run. Perlin noise repeats every 256 units, so a larger seed gives no new hills.
+    for (auto [entity, t] : scene.registry.view<Terrain>().each())
+        t.seed = static_cast<int>(std::random_device{}() % 256);
+
+    updateTerrain(scene);
+}
+
+void Game::updateTerrain(Scene& scene) {
+    entt::registry& registry = scene.registry;
+    const Terrain* settings = nullptr;
+
+    for (auto [entity, t] : registry.view<Terrain>().each())
+        settings = &t;
+
+    if (!settings)
+        return;
+
+    // The editor can delete the mesh entity. Then make it again.
+    const bool meshMissing = !registry.valid(terrainMeshEntity);
+
+    if (*settings == terrain && terrainMesh && !meshMissing)
+        return;
+
+    terrain = *settings;
+    terrainMesh = std::make_unique<Mesh>(makeTerrainMesh(terrain));
+
+    Material material = plastic(terrain.color, 8.0f);
+    material.specular = glm::vec3(0.1f);
+
+    if (meshMissing) {
+        terrainMeshEntity = scene.create("Terrain mesh");
+        registry.emplace<Transient>(terrainMeshEntity);
+    }
+
+    registry.emplace_or_replace<MeshRenderer>(terrainMeshEntity, terrainMesh.get(), material);
 }
 
 void Game::update(Scene& scene, Camera& camera, const Input& input, float dt) {
     // The player can be deleted from the editor UI.
     if (!scene.registry.valid(player) || !scene.registry.all_of<Player, Health>(player))
         return;
+
+    updateTerrain(scene);
 
     // Stopped when the run is over, and paused while a level-up waits for a choice.
     if (dead || won || pendingLevelUps > 0)
@@ -80,24 +117,30 @@ void Game::update(Scene& scene, Camera& camera, const Input& input, float dt) {
         p.grounded = false;
     }
 
-    p.verticalVelocity -= kGravity * dt;
-    transform.position.y += p.verticalVelocity * dt;
-
-    if (transform.position.y <= kGroundHeight) {
-        transform.position.y = kGroundHeight;
-        p.verticalVelocity = 0.0f;
-        p.grounded = true;
-    }
-
     transform.position.x = std::clamp(transform.position.x, -kArenaHalfSize, kArenaHalfSize);
     transform.position.z = std::clamp(transform.position.z, -kArenaHalfSize, kArenaHalfSize);
 
-    // Orbit: look at a point above the feet from `cameraDistance` behind it, never below the floor.
+    p.verticalVelocity -= kGravity * dt;
+    transform.position.y += p.verticalVelocity * dt;
+
+    // Land on the ground. A grounded player also stays on it when walking down a slope, instead of a small fall
+    // each frame.
+    const float ground = heightAt(terrain, transform.position.x, transform.position.z);
+
+    if (transform.position.y <= ground || (p.grounded && transform.position.y - ground < 0.3f)) {
+        transform.position.y = ground;
+        p.verticalVelocity = 0.0f;
+        p.grounded = true;
+    } else {
+        p.grounded = false;
+    }
+
+    // Orbit: look at a point above the feet from `cameraDistance` behind it, never below the ground.
     camera.yaw = cameraYaw;
     camera.pitch = cameraPitch;
     const glm::vec3 target = transform.position + glm::vec3(0.0f, 1.0f, 0.0f);
     camera.position = target - camera.front() * cameraDistance;
-    camera.position.y = std::max(camera.position.y, kGroundHeight + 0.2f);
+    camera.position.y = std::max(camera.position.y, heightAt(terrain, camera.position.x, camera.position.z) + 0.2f);
 
     updateEnemies(scene, dt);
     updateWeapon(scene, player, *enemyMesh, projectileMaterial, dt);
@@ -107,7 +150,7 @@ void Game::update(Scene& scene, Camera& camera, const Input& input, float dt) {
         kills++;
 
         if (death.xp > 0.0f)
-            spawnOrb(scene, *enemyMesh, orbMaterial, {death.position.x, kGroundHeight + 0.2f, death.position.z}, death.xp);
+            spawnOrb(scene, *enemyMesh, orbMaterial, {death.position.x, heightAt(terrain, death.position.x, death.position.z) + 0.2f, death.position.z}, death.xp);
     }
 
     // The run is won when the boss is dead. Its entity is then not valid.
@@ -136,7 +179,7 @@ void Game::updateEnemies(Scene& scene, float dt) {
         glm::vec3 position = playerPos + glm::vec3(std::cos(angle), 0.0f, std::sin(angle)) * spawner.ringRadius;
         position.x = std::clamp(position.x, -kArenaHalfSize, kArenaHalfSize);
         position.z = std::clamp(position.z, -kArenaHalfSize, kArenaHalfSize);
-        position.y = kGroundHeight + 0.5f * scale; // sphere radius is 0.5
+        position.y = heightAt(terrain, position.x, position.z) + 0.5f * scale; // sphere radius is 0.5
 
         const entt::entity enemy = scene.create(name, {.position = position, .scale = glm::vec3(scale)});
         registry.emplace<Enemy>(enemy, stats);
@@ -181,6 +224,10 @@ void Game::updateEnemies(Scene& scene, float dt) {
     }
 
     resolveEnemyCollisions(scene, playerPos, kPlayerRadius, kArenaHalfSize);
+
+    // The enemies stay on the ground. The sphere mesh has a radius of 0.5, so the center is half the scale above it.
+    for (auto [entity, transform, enemy] : registry.view<Transform, Enemy>().each())
+        transform.position.y = heightAt(terrain, transform.position.x, transform.position.z) + 0.5f * transform.scale.y;
 
     // An enemy that touches the player removes health. The collision step moves it out to exactly the sum of
     // the two radii, so the test adds a small margin.

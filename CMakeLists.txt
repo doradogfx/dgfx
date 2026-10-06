@@ -126,8 +126,9 @@ add_executable(dgfx
     src/game/game.cpp
     src/game/game_app.cpp
     src/game/screens.cpp
+    src/game/terrain.cpp
     src/game/upgrades.cpp
     src/game/weapons.cpp
     src/game/xp.cpp)
 target_link_libraries(dgfx PRIVATE dgfx_engine)
-target_include_directories(dgfx PRIVATE src)
+target_include_directories(dgfx PRIVATE src ${stb_SOURCE_DIR}) # stb for stb_perlin.h
