@@ -1,6 +1,11 @@
 {
   "entities": [
     {
+      "Props": {
+        "clearRadius": 4.0,
+        "rocks": 25,
+        "trees": 15
+      },
       "Terrain": {
         "amplitude": 1.5,
         "base": -0.5,

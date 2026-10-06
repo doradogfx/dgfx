@@ -1,5 +1,6 @@
 #include "game/weapons.h"
 
+#include "game/collision.h"
 #include "game/game.h"
 
 #include <algorithm>
@@ -62,7 +63,7 @@ std::vector<Death> updateProjectiles(Scene& scene, float dt) {
         transform.position += projectile.velocity * dt;
         projectile.lifetime -= dt;
 
-        if (projectile.lifetime <= 0.0f) {
+        if (projectile.lifetime <= 0.0f || insideObstacle(registry, transform.position)) {
             finished.push_back(entity);
             continue;
         }

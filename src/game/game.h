@@ -6,6 +6,7 @@
 #include "renderer/material.h"
 #include "scene/component_registry.h"
 #include "scene/scene.h"
+#include "game/props.h"
 #include "game/terrain.h"
 #include "game/upgrades.h"
 
@@ -79,14 +80,18 @@ struct Game {
 private:
     void updateEnemies(Scene& scene, float dt);
     void rollChoices(); // 3 different random upgrades
-    void updateTerrain(Scene& scene); // builds the mesh again when the Terrain settings change
+    void updateWorld(Scene& scene); // makes the terrain mesh and the props again when their settings change
 
-    // A copy of the level's Terrain component. Flat ground when the level has none.
+    // Copies of the level's Terrain and Props components. Flat ground when the level has no Terrain.
     Terrain terrain{.amplitude = 0.0f};
     std::unique_ptr<Mesh> terrainMesh;
     entt::entity terrainMeshEntity = entt::null; // Transient: the scene file does not save it
+    Props props;
+    bool propsMade = false;
+    glm::vec3 playerStart{0.0f}; // the props keep this area clear
 
-    const Mesh* enemyMesh = nullptr;
+    const Mesh* enemyMesh = nullptr; // the sphere
+    const Mesh* cubeMesh = nullptr;
     bool bossSpawned = false;
     std::mt19937 rng{1};
     Material enemyMaterial{nullptr, nullptr, glm::vec3(0.6f, 0.02f, 0.02f), glm::vec3(0.3f), 32.0f}; // linear red plastic

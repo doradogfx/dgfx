@@ -18,6 +18,7 @@ static constexpr float kEnemyScale = 0.8f;
 
 Game::Game(Scene& scene, Assets& assets) {
     enemyMesh = &assets.mesh("sphere");
+    cubeMesh = &assets.mesh("cube");
 
     bool found = false;
 
@@ -29,41 +30,61 @@ Game::Game(Scene& scene, Assets& assets) {
     if (!found)
         throw std::runtime_error("The level has no Player entity");
 
-    // New hills each run. Perlin noise repeats every 256 units, so a larger seed gives no new hills.
+    playerStart = scene.registry.get<Transform>(player).position;
+
+    // New hills and props each run. Perlin noise repeats every 256 units, so a larger seed gives no new hills.
     for (auto [entity, t] : scene.registry.view<Terrain>().each())
         t.seed = static_cast<int>(std::random_device{}() % 256);
 
-    updateTerrain(scene);
+    updateWorld(scene);
 }
 
-void Game::updateTerrain(Scene& scene) {
+void Game::updateWorld(Scene& scene) {
     entt::registry& registry = scene.registry;
-    const Terrain* settings = nullptr;
+    const Terrain* terrainSettings = nullptr;
+    const Props* propSettings = nullptr;
 
     for (auto [entity, t] : registry.view<Terrain>().each())
-        settings = &t;
+        terrainSettings = &t;
 
-    if (!settings)
-        return;
+    for (auto [entity, p] : registry.view<Props>().each())
+        propSettings = &p;
 
     // The editor can delete the mesh entity. Then make it again.
     const bool meshMissing = !registry.valid(terrainMeshEntity);
+    const bool terrainChanged = terrainSettings && (!(*terrainSettings == terrain) || !terrainMesh || meshMissing);
 
-    if (*settings == terrain && terrainMesh && !meshMissing)
-        return;
+    if (terrainChanged) {
+        terrain = *terrainSettings;
+        terrainMesh = std::make_unique<Mesh>(makeTerrainMesh(terrain));
 
-    terrain = *settings;
-    terrainMesh = std::make_unique<Mesh>(makeTerrainMesh(terrain));
+        Material material = plastic(terrain.color, 8.0f);
+        material.specular = glm::vec3(0.1f);
 
-    Material material = plastic(terrain.color, 8.0f);
-    material.specular = glm::vec3(0.1f);
+        if (meshMissing) {
+            terrainMeshEntity = scene.create("Terrain mesh");
+            registry.emplace<Transient>(terrainMeshEntity);
+        }
 
-    if (meshMissing) {
-        terrainMeshEntity = scene.create("Terrain mesh");
-        registry.emplace<Transient>(terrainMeshEntity);
+        registry.emplace_or_replace<MeshRenderer>(terrainMeshEntity, terrainMesh.get(), material);
     }
 
-    registry.emplace_or_replace<MeshRenderer>(terrainMeshEntity, terrainMesh.get(), material);
+    // The props sit on the terrain, so they move with it too.
+    if (!propSettings || (!terrainChanged && propsMade && *propSettings == props))
+        return;
+
+    props = *propSettings;
+    propsMade = true;
+
+    std::vector<entt::entity> old;
+
+    for (auto [entity, obstacle] : registry.view<Obstacle>().each())
+        old.push_back(entity);
+
+    for (entt::entity entity : old)
+        scene.destroy(entity); // with the children: the trunk and the leaves of a tree
+
+    spawnProps(scene, props, terrain, playerStart, *cubeMesh, *enemyMesh);
 }
 
 void Game::update(Scene& scene, Camera& camera, const Input& input, float dt) {
@@ -71,7 +92,7 @@ void Game::update(Scene& scene, Camera& camera, const Input& input, float dt) {
     if (!scene.registry.valid(player) || !scene.registry.all_of<Player, Health>(player))
         return;
 
-    updateTerrain(scene);
+    updateWorld(scene);
 
     // Stopped when the run is over, and paused while a level-up waits for a choice.
     if (dead || won || pendingLevelUps > 0)
@@ -117,6 +138,7 @@ void Game::update(Scene& scene, Camera& camera, const Input& input, float dt) {
         p.grounded = false;
     }
 
+    pushOutOfObstacles(scene.registry, transform.position, kPlayerRadius);
     transform.position.x = std::clamp(transform.position.x, -kArenaHalfSize, kArenaHalfSize);
     transform.position.z = std::clamp(transform.position.z, -kArenaHalfSize, kArenaHalfSize);
 

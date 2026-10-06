@@ -46,7 +46,32 @@ void resolveEnemyCollisions(Scene& scene, glm::vec3 playerPosition, float player
         if (distance < minDistance && distance > 0.0001f)
             position += fromPlayer / distance * (minDistance - distance);
 
+        pushOutOfObstacles(scene.registry, position, body.radius);
+
         position.x = std::clamp(position.x, -arenaHalfSize, arenaHalfSize);
         position.z = std::clamp(position.z, -arenaHalfSize, arenaHalfSize);
     }
+}
+
+void pushOutOfObstacles(const entt::registry& registry, glm::vec3& position, float radius) {
+    for (auto [entity, transform, obstacle] : registry.view<const Transform, const Obstacle>().each()) {
+        glm::vec3 offset = position - transform.position;
+        offset.y = 0.0f;
+        const float distance = glm::length(offset);
+        const float minDistance = obstacle.radius + radius;
+
+        if (distance < minDistance && distance > 0.0001f)
+            position += offset / distance * (minDistance - distance);
+    }
+}
+
+bool insideObstacle(const entt::registry& registry, glm::vec3 point) {
+    for (auto [entity, transform, obstacle] : registry.view<const Transform, const Obstacle>().each()) {
+        const glm::vec2 offset(point.x - transform.position.x, point.z - transform.position.z);
+
+        if (glm::length(offset) < obstacle.radius && point.y < obstacle.top)
+            return true;
+    }
+
+    return false;
 }

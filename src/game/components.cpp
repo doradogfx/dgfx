@@ -1,5 +1,6 @@
 #include "game/demo.h"
 #include "game/game.h"
+#include "game/props.h"
 #include "game/terrain.h"
 #include "game/weapons.h"
 #include "game/xp.h"
@@ -16,7 +17,8 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Experience, base, step, pickupRa
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Spawner, interval, minInterval, maxEnemies, ringRadius, ramp, enemyHealth,
                                                 enemySpeed, maxEnemySpeed, enemyDamage, bossTime, bossHealth)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Weapon, damage, interval, range, projectileSpeed)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Terrain, size, resolution, base, amplitude, frequency, octaves, seed, color)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Props, rocks, trees, clearRadius)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Terrain,size, resolution, base, amplitude, frequency, octaves, seed, color)
 
 // A tag has nothing to save.
 static void to_json(Json& json, const FollowCamera&) {
@@ -90,5 +92,11 @@ void registerGameComponents(ComponentRegistry& components) {
         ImGui::DragInt("Octaves", &terrain.octaves, 0.1f, 1, 8);
         ImGui::DragInt("Seed", &terrain.seed);
         ImGui::ColorEdit3("Color", glm::value_ptr(terrain.color));
+    });
+
+    components.add<Props>("Props", [](Props& props) {
+        ImGui::DragInt("Rocks", &props.rocks, 0.2f, 0, 500);
+        ImGui::DragInt("Trees", &props.trees, 0.2f, 0, 500);
+        ImGui::DragFloat("Clear radius", &props.clearRadius, 0.1f, 0.0f, 50.0f);
     });
 }
