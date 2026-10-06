@@ -12,10 +12,10 @@ enum class GameOverAction { None, Restart, Menu };
 
 MenuAction mainMenu();                                          // Enter = Start
 PauseAction pauseMenu();                                        // Enter = Resume
-GameOverAction gameOverScreen(const Game& game, const Scene& scene); // Enter = Restart
+GameOverAction endScreen(const Game& game, const Scene& scene); // "You win!" or "Game over". Enter = Restart
 
 // Returns the index of the chosen upgrade, or -1. Keys 1, 2 and 3 choose too.
 int levelUpChoice(const Game& game);
 
-// Health, XP and level, the time and the kills, at the top of the screen.
+// Health, XP and level, the time and the kills, at the top of the screen. The boss health while the boss lives.
 void hud(const Game& game, const Scene& scene);

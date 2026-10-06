@@ -12,7 +12,8 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Player, speed, jumpSpeed)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Health, current, max)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Enemy, speed, radius, damage, xpValue)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Experience, base, step, pickupRadius, pickupSpeed)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Spawner, interval, maxEnemies, ringRadius, enemyHealth)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Spawner, interval, minInterval, maxEnemies, ringRadius, ramp, enemyHealth,
+                                                enemySpeed, maxEnemySpeed, enemyDamage, bossTime, bossHealth)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Weapon, damage, interval, range, projectileSpeed)
 
 // A tag has nothing to save.
@@ -66,8 +67,15 @@ void registerGameComponents(ComponentRegistry& components) {
 
     components.add<Spawner>("Spawner", [](Spawner& spawner) {
         ImGui::DragFloat("Interval", &spawner.interval, 0.05f, 0.05f, 60.0f, "%.2f s");
+        ImGui::DragFloat("Min interval", &spawner.minInterval, 0.01f, 0.01f, 60.0f, "%.2f s");
         ImGui::DragInt("Max enemies", &spawner.maxEnemies, 1.0f, 0, 2000);
         ImGui::DragFloat("Ring radius", &spawner.ringRadius, 0.1f, 1.0f, 40.0f);
+        ImGui::DragFloat("Ramp", &spawner.ramp, 0.01f, 0.0f, 10.0f, "%.2f /min");
         ImGui::DragFloat("Enemy health", &spawner.enemyHealth, 1.0f, 1.0f, 10000.0f);
+        ImGui::DragFloat("Enemy speed", &spawner.enemySpeed, 0.1f, 0.0f, 50.0f, "%.1f u/s");
+        ImGui::DragFloat("Max enemy speed", &spawner.maxEnemySpeed, 0.1f, 0.0f, 50.0f, "%.1f u/s");
+        ImGui::DragFloat("Enemy damage", &spawner.enemyDamage, 0.5f, 0.0f, 1000.0f, "%.1f /s");
+        ImGui::DragFloat("Boss time", &spawner.bossTime, 1.0f, 0.0f, 3600.0f, "%.0f s");
+        ImGui::DragFloat("Boss health", &spawner.bossHealth, 10.0f, 1.0f, 100000.0f);
     });
 }

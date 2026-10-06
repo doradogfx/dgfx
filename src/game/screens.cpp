@@ -62,10 +62,10 @@ PauseAction pauseMenu() {
     return action;
 }
 
-GameOverAction gameOverScreen(const Game& game, const Scene& scene) {
+GameOverAction endScreen(const Game& game, const Scene& scene) {
     GameOverAction action = GameOverAction::None;
 
-    if (beginCentered("Game over")) {
+    if (beginCentered(game.won ? "You win!" : "Game over")) {
         char time[16];
         formatTime(time, sizeof(time), game.elapsed);
         ImGui::Text("Survived %s", time);
@@ -152,6 +152,11 @@ void hud(const Game& game, const Scene& scene) {
         char time[16];
         formatTime(time, sizeof(time), game.elapsed);
         ImGui::Text("%s   |   %d kills", time, game.kills);
+
+        if (const Health* health = scene.registry.valid(game.boss) ? scene.registry.try_get<Health>(game.boss) : nullptr) {
+            std::snprintf(text, sizeof(text), "Boss %.0f / %.0f", health->current, health->max);
+            bar(health->current / health->max, width, text, ImVec4(0.8f, 0.1f, 0.1f, 1.0f));
+        }
     }
 
     ImGui::End();

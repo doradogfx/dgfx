@@ -42,7 +42,7 @@ void GameApp::update(float dt) {
         else if (input.pressed(GLFW_KEY_ESCAPE) && screen == Screen::Paused)
             screen = Screen::Playing;
 
-        if (game->dead && screen == Screen::Playing)
+        if ((game->dead || game->won) && screen == Screen::Playing)
             screen = Screen::GameOver;
     }
 
@@ -107,7 +107,7 @@ void GameApp::gameUI() {
         return;
 
     case Screen::GameOver:
-        if (const GameOverAction action = gameOverScreen(*game, scene); action == GameOverAction::Restart)
+        if (const GameOverAction action = endScreen(*game, scene); action == GameOverAction::Restart)
             restart(Screen::Playing);
         else if (action == GameOverAction::Menu)
             restart(Screen::Menu);

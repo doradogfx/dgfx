@@ -12,7 +12,8 @@ A simplified 3D survivors-like built on the engine.
 - **Enemies**: spawn on a ring around the player, chase it and drain its health on contact. They collide: they push each other apart, they cannot overlap the player, and everyone stays inside the arena.
 - **Automatic weapon**: shoots projectiles at the nearest enemy in range. Enemies have health and are destroyed at zero; the stats overlay counts kills.
 - **Experience**: dead enemies drop XP orbs. Orbs near the player fly to it and raise its level. At each level-up the game pauses and offers 3 random upgrades (damage, fire rate, move speed, pickup radius, max health).
-- **Game flow**: a main menu, a HUD (health, XP and level, time, kills), pause and game over with the run stats, and restart.
+- **Difficulty and boss**: the game gets harder over time. Enemies spawn faster and get more health and speed. At 5:00 a boss comes, and killing it wins the run.
+- **Game flow**: a main menu, a HUD (health, XP and level, time, kills), pause, game over or win with the run stats, and restart.
 - **Third-person camera**: orbits the player, with adjustable distance.
 
 ## Engine features

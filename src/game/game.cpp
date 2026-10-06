@@ -36,8 +36,8 @@ void Game::update(Scene& scene, Camera& camera, const Input& input, float dt) {
     if (!scene.registry.valid(player) || !scene.registry.all_of<Player, Health>(player))
         return;
 
-    // Stopped after death, and paused while a level-up waits for a choice.
-    if (dead || pendingLevelUps > 0)
+    // Stopped when the run is over, and paused while a level-up waits for a choice.
+    if (dead || won || pendingLevelUps > 0)
         return;
 
     elapsed += dt;
@@ -102,10 +102,18 @@ void Game::update(Scene& scene, Camera& camera, const Input& input, float dt) {
     updateEnemies(scene, dt);
     updateWeapon(scene, player, *enemyMesh, projectileMaterial, dt);
 
-    // Each dead enemy drops an orb on the floor where it died.
+    // Each dead enemy that gives XP drops an orb on the floor where it died.
     for (const Death& death : updateProjectiles(scene, dt)) {
         kills++;
-        spawnOrb(scene, *enemyMesh, orbMaterial, {death.position.x, kGroundHeight + 0.2f, death.position.z}, death.xp);
+
+        if (death.xp > 0.0f)
+            spawnOrb(scene, *enemyMesh, orbMaterial, {death.position.x, kGroundHeight + 0.2f, death.position.z}, death.xp);
+    }
+
+    // The run is won when the boss is dead. Its entity is then not valid.
+    if (bossSpawned && !scene.registry.valid(boss)) {
+        boss = entt::null;
+        won = true;
     }
 
     const int levels = updateOrbs(scene, player, kPlayerRadius, dt);
@@ -121,10 +129,35 @@ void Game::updateEnemies(Scene& scene, float dt) {
     const glm::vec3 playerPos = registry.get<Transform>(player).position;
     Health& health = registry.get<Health>(player);
 
+    // Creates an enemy at a random position on the spawner ring around the player.
+    auto spawn = [&](const Spawner& spawner, const char* name, float scale, const Enemy& stats, float health,
+                     const Material& material) {
+        const float angle = std::uniform_real_distribution<float>(0.0f, 6.2831853f)(rng);
+        glm::vec3 position = playerPos + glm::vec3(std::cos(angle), 0.0f, std::sin(angle)) * spawner.ringRadius;
+        position.x = std::clamp(position.x, -kArenaHalfSize, kArenaHalfSize);
+        position.z = std::clamp(position.z, -kArenaHalfSize, kArenaHalfSize);
+        position.y = kGroundHeight + 0.5f * scale; // sphere radius is 0.5
+
+        const entt::entity enemy = scene.create(name, {.position = position, .scale = glm::vec3(scale)});
+        registry.emplace<Enemy>(enemy, stats);
+        registry.emplace<Health>(enemy, Health{health, health});
+        registry.emplace<Transient>(enemy); // spawned while playing, not part of the level file
+        registry.emplace<MeshRenderer>(enemy, enemyMesh, material);
+        return enemy;
+    };
+
     for (auto [entity, spawner] : registry.view<Spawner>().each()) {
+        // The boss comes once. The normal spawns continue.
+        if (!bossSpawned && elapsed >= spawner.bossTime) {
+            bossSpawned = true;
+            boss = spawn(spawner, "Boss", 3.0f, Enemy{.speed = 2.5f, .radius = 1.2f, .damage = 40.0f, .xpValue = 0.0f},
+                         spawner.bossHealth, bossMaterial);
+        }
+
+        const float difficulty = 1.0f + spawner.ramp * elapsed / 60.0f;
         spawner.timer += dt;
 
-        if (spawner.timer < spawner.interval)
+        if (spawner.timer < std::max(spawner.minInterval, spawner.interval / difficulty))
             continue;
 
         spawner.timer = 0.0f;
@@ -132,18 +165,9 @@ void Game::updateEnemies(Scene& scene, float dt) {
         if (static_cast<int>(registry.view<Enemy>().size()) >= spawner.maxEnemies)
             continue;
 
-        // Spawn enemy in a random position around the player in a radius
-        const float angle = std::uniform_real_distribution<float>(0.0f, 6.2831853f)(rng);
-        glm::vec3 position = playerPos + glm::vec3(std::cos(angle), 0.0f, std::sin(angle)) * spawner.ringRadius;
-        position.x = std::clamp(position.x, -kArenaHalfSize, kArenaHalfSize);
-        position.z = std::clamp(position.z, -kArenaHalfSize, kArenaHalfSize);
-        position.y = kGroundHeight + 0.5f * kEnemyScale; // sphere radius is 0.5
-
-        const entt::entity enemy = scene.create("Enemy", {.position = position, .scale = glm::vec3(kEnemyScale)});
-        registry.emplace<Enemy>(enemy);
-        registry.emplace<Health>(enemy, Health{spawner.enemyHealth, spawner.enemyHealth});
-        registry.emplace<Transient>(enemy); // spawned while playing, not part of the level file
-        registry.emplace<MeshRenderer>(enemy, enemyMesh, enemyMaterial);
+        const Enemy stats{.speed = std::min(spawner.maxEnemySpeed, spawner.enemySpeed * std::sqrt(difficulty)),
+                          .damage = spawner.enemyDamage};
+        spawn(spawner, "Enemy", kEnemyScale, stats, spawner.enemyHealth * difficulty, enemyMaterial);
     }
 
     // The enemies follow the player.

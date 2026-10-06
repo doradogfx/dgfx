@@ -33,13 +33,21 @@ struct Enemy {
     float xpValue = 1.0f; // XP in the orb that this enemy drops
 };
 
-// Spawns enemies on a ring around the player.
+// Spawns enemies on a ring around the player. The difficulty d = 1 + ramp * minutes divides the interval and
+// multiplies the enemy health and speed. At bossTime, one boss comes. Kill it to win.
 struct Spawner {
-    float interval = 1.0f; // seconds between spawns
+    float interval = 1.0f;    // seconds between spawns at the start
+    float minInterval = 0.15f;
     float timer = 0.0f;
     int maxEnemies = 100;
     float ringRadius = 16.0f;
-    float enemyHealth = 20.0f; // health of each new enemy
+    float ramp = 0.6f;         // difficulty added each minute
+    float enemyHealth = 20.0f; // health of each new enemy at the start
+    float enemySpeed = 3.0f;   // at the start, multiplied by sqrt(d)
+    float maxEnemySpeed = 4.5f;
+    float enemyDamage = 15.0f; // per second of contact
+    float bossTime = 300.0f;   // seconds
+    float bossHealth = 1500.0f;
 };
 
 struct Game {
@@ -51,6 +59,8 @@ struct Game {
     int kills = 0;
     float elapsed = 0.0f; // seconds survived
     bool dead = false;    // health reached 0: the run is over
+    bool won = false;     // the boss is dead: the run is over
+    entt::entity boss = entt::null; // valid while the boss is alive
 
     // Level-ups that wait for a choice. While one waits, the game is paused.
     int pendingLevelUps = 0;
@@ -69,8 +79,10 @@ private:
     void rollChoices(); // 3 different random upgrades
 
     const Mesh* enemyMesh = nullptr;
+    bool bossSpawned = false;
     std::mt19937 rng{1};
     Material enemyMaterial{nullptr, nullptr, glm::vec3(0.6f, 0.02f, 0.02f), glm::vec3(0.3f), 32.0f}; // linear red plastic
+    Material bossMaterial{nullptr, nullptr, glm::vec3(0.15f, 0.0f, 0.2f), glm::vec3(0.5f), 64.0f}; // dark purple
     Material projectileMaterial = plastic({1.0f, 0.85f, 0.2f}, 64.0f);
     Material orbMaterial = plastic({0.3f, 0.7f, 1.0f}, 64.0f);
 };

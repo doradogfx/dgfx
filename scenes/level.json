@@ -120,9 +120,16 @@
     },
     {
       "Spawner": {
+        "bossHealth": 1500.0,
+        "bossTime": 300.0,
+        "enemyDamage": 15.0,
         "enemyHealth": 20.0,
+        "enemySpeed": 3.0,
         "interval": 1.0,
         "maxEnemies": 100,
+        "maxEnemySpeed": 4.5,
+        "minInterval": 0.15,
+        "ramp": 0.6,
         "ringRadius": 16.0
       },
       "name": "Enemy spawner",
