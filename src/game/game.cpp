@@ -36,9 +36,11 @@ void Game::update(Scene& scene, Camera& camera, const Input& input, float dt) {
     if (!scene.registry.valid(player) || !scene.registry.all_of<Player, Health>(player))
         return;
 
-    // Paused while a level-up waits for a choice.
-    if (pendingLevelUps > 0)
+    // Stopped after death, and paused while a level-up waits for a choice.
+    if (dead || pendingLevelUps > 0)
         return;
+
+    elapsed += dt;
 
     Transform& transform = scene.registry.get<Transform>(player);
     Player& p = scene.registry.get<Player>(player);
@@ -166,29 +168,10 @@ void Game::updateEnemies(Scene& scene, float dt) {
             health.current -= enemy.damage * dt;
     }
 
-    // Placeholder game over
+    // The run ends at 0 health. GameApp shows the game over screen.
     if (health.current <= 0.0f) {
-        health.current = health.max;
-        kills = 0;
-        pendingLevelUps = 0;
-
-        std::vector<entt::entity> enemies; // and the projectiles and the orbs
-
-        for (entt::entity entity : registry.view<Enemy>())
-            enemies.push_back(entity);
-
-        for (entt::entity entity : registry.view<Projectile>())
-            enemies.push_back(entity);
-
-        for (entt::entity entity : registry.view<XpOrb>())
-            enemies.push_back(entity);
-
-        if (Experience* experience = registry.try_get<Experience>(player)) {
-            experience->level = 1;
-            experience->xp = 0.0f;
-        }
-
-        registry.destroy(enemies.begin(), enemies.end());
+        health.current = 0.0f;
+        dead = true;
     }
 }
 

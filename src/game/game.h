@@ -49,6 +49,8 @@ struct Game {
 
     entt::entity player;
     int kills = 0;
+    float elapsed = 0.0f; // seconds survived
+    bool dead = false;    // health reached 0: the run is over
 
     // Level-ups that wait for a choice. While one waits, the game is paused.
     int pendingLevelUps = 0;

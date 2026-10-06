@@ -125,6 +125,7 @@ add_executable(dgfx
     src/game/demo.cpp
     src/game/game.cpp
     src/game/game_app.cpp
+    src/game/screens.cpp
     src/game/upgrades.cpp
     src/game/weapons.cpp
     src/game/xp.cpp)

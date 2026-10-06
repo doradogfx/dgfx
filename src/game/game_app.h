@@ -19,7 +19,15 @@ protected:
     void gameUI() override;
 
 private:
+    // The screens of a scene with a player. The level-up choice is not a screen: it shows over Playing.
+    // ponytail: an enum and a switch. Use a class for each state when one screen gets its own logic.
+    enum class Screen { Menu, Playing, Paused, GameOver };
+
+    // Loads the open scene again, which gives a fresh run.
+    void restart(Screen next);
+
     std::optional<Game> game;
+    Screen screen = Screen::Menu;
     bool flyMode = false;
-    bool wasChoosing = false; // a level-up choice was open last frame
+    bool cursorFree = false; // the game UI freed the cursor last frame
 };

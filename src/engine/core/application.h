@@ -35,6 +35,9 @@ protected:
     // the default just loads the scene. Called between frames, never in the middle of one.
     virtual void openScene(const std::string& file) { loadScene(file); }
 
+    // The scene file that is open, empty if none.
+    const std::string& sceneName() const { return currentScene; }
+
     // Game windows, drawn every frame after the debug UI (menus, HUD, choices).
     virtual void gameUI() {}
 

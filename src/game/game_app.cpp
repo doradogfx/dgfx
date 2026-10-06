@@ -1,7 +1,7 @@
 #include "game/game_app.h"
 
 #include "game/demo.h"
-#include "game/xp.h"
+#include "game/screens.h"
 
 #include <GLFW/glfw3.h>
 #include <imgui.h>
@@ -9,12 +9,14 @@
 GameApp::GameApp() {
     registerGameComponents(components);
     openScene("level.json");
+    screen = Screen::Menu;
 }
 
 void GameApp::openScene(const std::string& file) {
     loadScene(file);
     game.reset();
     flyMode = false;
+    screen = Screen::Playing;
 
     // The starting view for scenes without a player to follow.
     camera = Camera();
@@ -25,13 +27,28 @@ void GameApp::openScene(const std::string& file) {
         game.emplace(scene, assets);
 }
 
+void GameApp::restart(Screen next) {
+    openScene(sceneName());
+    screen = next;
+}
+
 void GameApp::update(float dt) {
     if (input.pressed(GLFW_KEY_F1))
         flyMode = !flyMode;
 
+    if (game) {
+        if (input.pressed(GLFW_KEY_ESCAPE) && screen == Screen::Playing)
+            screen = Screen::Paused;
+        else if (input.pressed(GLFW_KEY_ESCAPE) && screen == Screen::Paused)
+            screen = Screen::Playing;
+
+        if (game->dead && screen == Screen::Playing)
+            screen = Screen::GameOver;
+    }
+
     if (flyMode || !game)
         flyCamera(camera, input, dt);
-    else
+    else if (screen == Screen::Playing)
         game->update(scene, camera, input, dt);
 
     if (!game)
@@ -40,54 +57,60 @@ void GameApp::update(float dt) {
 
 void GameApp::statsOverlay() {
     ImGui::Text("%zu enemies", static_cast<size_t>(scene.registry.view<const Enemy>().size()));
-
-    if (game)
-        ImGui::Text("%d kills", game->kills);
-
-    for (auto [entity, experience, player] : scene.registry.view<const Experience, const Player>().each())
-        ImGui::Text("Level %d (%.0f / %.0f XP)", experience.level, experience.xp, xpToNext(experience));
-
-    for (auto [entity, health, player] : scene.registry.view<const Health, const Player>().each())
-        ImGui::Text("Health %.0f / %.0f", health.current, health.max);
-
     ImGui::TextDisabled("F1: fly camera");
 }
 
 void GameApp::gameUI() {
-    const bool choosing = game && game->pendingLevelUps > 0;
+    const bool choosing = game && screen == Screen::Playing && game->pendingLevelUps > 0;
+    const bool wantsCursor = game && (screen != Screen::Playing || choosing);
 
-    // A free cursor while a choice is open, so the player can click it. Every frame, because a click outside
-    // the window captures the cursor again. Captured again when the choice closes, to play.
-    if (choosing)
+    // A free cursor on the menus and the level-up choice, so the player can click. Every frame, because a click
+    // outside the window captures the cursor again. Captured once when play continues, so Tab still frees it
+    // for the debug panels.
+    if (wantsCursor)
         input.setCaptured(false);
-    else if (wasChoosing)
+    else if (cursorFree)
         input.setCaptured(true);
 
-    wasChoosing = choosing;
+    cursorFree = wantsCursor;
 
-    if (!choosing)
+    if (!game)
         return;
 
-    const ImVec2 screen = ImGui::GetIO().DisplaySize;
-    ImGui::SetNextWindowPos(ImVec2(screen.x * 0.5f, screen.y * 0.5f), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+    // A change of screen can load the scene again, which replaces the game. Return after it.
+    switch (screen) {
+    case Screen::Menu:
+        if (const MenuAction action = mainMenu(); action == MenuAction::Start)
+            screen = Screen::Playing;
+        else if (action == MenuAction::Quit)
+            glfwSetWindowShouldClose(window.handle(), GLFW_TRUE);
+        return;
 
-    const ImGuiWindowFlags flags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove |
-                                   ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize |
-                                   ImGuiWindowFlags_NoSavedSettings;
+    case Screen::Playing:
+        hud(*game, scene);
 
-    if (ImGui::Begin("Level up!", nullptr, flags)) {
-        ImGui::Text("Choose an upgrade");
-        ImGui::Spacing();
-
-        const ImVec2 buttonSize(ImGui::GetFontSize() * 16.0f, ImGui::GetFontSize() * 2.5f);
-
-        for (int i = 0; i < static_cast<int>(game->choices.size()); i++) {
-            if (ImGui::Button(upgradeLabel(game->choices[i]), buttonSize)) {
-                game->choose(scene, i);
-                break; // the choices can change after a choice
-            }
+        if (choosing) {
+            if (const int chosen = levelUpChoice(*game); chosen >= 0)
+                game->choose(scene, chosen);
         }
-    }
+        return;
 
-    ImGui::End();
+    case Screen::Paused:
+        hud(*game, scene);
+
+        if (const PauseAction action = pauseMenu(); action == PauseAction::Resume)
+            screen = Screen::Playing;
+        else if (action == PauseAction::Restart)
+            restart(Screen::Playing);
+        else if (action == PauseAction::Menu)
+            restart(Screen::Menu);
+        return;
+
+    case Screen::GameOver:
+        if (const GameOverAction action = gameOverScreen(*game, scene); action == GameOverAction::Restart)
+            restart(Screen::Playing);
+        else if (action == GameOverAction::Menu)
+            restart(Screen::Menu);
+        return;
+    }
 }
