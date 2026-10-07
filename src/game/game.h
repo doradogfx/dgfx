@@ -35,6 +35,7 @@ struct Enemy {
     float radius = 0.4f;
     float damage = 5.0f; // per second of contact
     float xpValue = 1.0f; // XP in the orb that this enemy drops
+    float flash = 0.0f;   // seconds of white left after a hit. Not saved.
 };
 
 // Spawns enemies on a ring around the player. The difficulty d = 1 + ramp * minutes divides the interval and
@@ -97,6 +98,7 @@ private:
     std::mt19937 rng{1};
     Material enemyMaterial{nullptr, nullptr, glm::vec3(0.6f, 0.02f, 0.02f), glm::vec3(0.3f), 32.0f}; // linear red plastic
     Material bossMaterial{nullptr, nullptr, glm::vec3(0.15f, 0.0f, 0.2f), glm::vec3(0.5f), 64.0f}; // dark purple
+    Material flashMaterial = plastic({1.0f, 1.0f, 1.0f}, 32.0f); // an enemy that was just hit
     Material projectileMaterial = plastic({1.0f, 0.85f, 0.2f}, 64.0f);
     Material orbMaterial = plastic({0.3f, 0.7f, 1.0f}, 64.0f);
 };

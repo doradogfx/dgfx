@@ -6,6 +6,8 @@
 #include <algorithm>
 #include <vector>
 
+static constexpr float kHitFlashTime = 0.1f; // seconds that a hit enemy stays white
+
 bool updateWeapon(Scene& scene, entt::entity player, const Mesh& mesh, const Material& material, float dt) {
     entt::registry& registry = scene.registry;
     Weapon* weapon = registry.try_get<Weapon>(player);
@@ -73,6 +75,7 @@ ProjectileResult updateProjectiles(Scene& scene, float dt) {
         for (auto [enemyEntity, enemyTransform, enemy, health] : registry.view<Transform, Enemy, Health>().each()) {
             if (glm::distance(enemyTransform.position, transform.position) < enemy.radius + projectile.radius) {
                 health.current -= projectile.damage;
+                enemy.flash = kHitFlashTime;
                 result.hits++;
                 finished.push_back(entity);
                 break;

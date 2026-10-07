@@ -182,6 +182,12 @@ void Game::update(Scene& scene, Camera& camera, const Input& input, Audio& audio
     if (!shots.deaths.empty())
         audio.play("enemy_death.wav", 0.5f, 0.05f);
 
+    // A hit enemy is white for a short time, then it gets its own color again.
+    for (auto [entity, enemy, renderer] : scene.registry.view<Enemy, MeshRenderer>().each()) {
+        enemy.flash = std::max(0.0f, enemy.flash - dt);
+        renderer.material = enemy.flash > 0.0f ? flashMaterial : (entity == boss ? bossMaterial : enemyMaterial);
+    }
+
     // Each dead enemy that gives XP drops an orb on the floor where it died.
     for (const Death& death : shots.deaths) {
         kills++;
