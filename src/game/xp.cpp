@@ -15,12 +15,12 @@ void spawnOrb(Scene& scene, const Mesh& mesh, const Material& material, glm::vec
     registry.emplace<MeshRenderer>(orb, &mesh, material);
 }
 
-int updateOrbs(Scene& scene, entt::entity player, float playerRadius, float dt) {
+OrbResult updateOrbs(Scene& scene, entt::entity player, float playerRadius, float dt) {
     entt::registry& registry = scene.registry;
     Experience* experience = registry.try_get<Experience>(player);
 
     if (!experience)
-        return 0;
+        return {};
 
     const glm::vec3 playerPosition = registry.get<Transform>(player).position;
 
@@ -42,13 +42,13 @@ int updateOrbs(Scene& scene, entt::entity player, float playerRadius, float dt) 
 
     registry.destroy(taken.begin(), taken.end());
 
-    int levels = 0;
+    OrbResult result{static_cast<int>(taken.size())};
 
     while (experience->xp >= xpToNext(*experience)) {
         experience->xp -= xpToNext(*experience);
         experience->level++;
-        levels++;
+        result.levels++;
     }
 
-    return levels;
+    return result;
 }

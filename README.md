@@ -14,6 +14,7 @@ A simplified 3D survivors-like built on the engine.
 - **Automatic weapon**: shoots projectiles at the nearest enemy in range. Enemies have health and are destroyed at zero; the stats overlay counts kills.
 - **Experience**: dead enemies drop XP orbs. Orbs near the player fly to it and raise its level. At each level-up the game pauses and offers 3 random upgrades (damage, fire rate, move speed, pickup radius, max health).
 - **Difficulty and boss**: the game gets harder over time. Enemies spawn faster and get more health and speed. At 5:00 a boss comes, and killing it wins the run.
+- **Sound**: effects for shots, hits, deaths, XP pickups, level-ups, jumps, damage, menus, game over and win.
 - **Game flow**: a main menu, a HUD (health, XP and level, time, kills), pause, game over or win with the run stats, and restart.
 - **Third-person camera**: orbits the player, with adjustable distance.
 
@@ -40,6 +41,10 @@ A simplified 3D survivors-like built on the engine.
 - **Asset manager** that loads meshes, textures, models and skyboxes on first use and shares them.
 - **Entities and components** with EnTT, with a parent/child transform hierarchy.
 - **Scene files**: scenes are JSON, loaded and saved through a component registry, so the engine never names game components (see [Editing scenes](#editing-scenes)).
+
+### Audio
+
+- **Sound effects** with miniaudio: each file is decoded once and kept in memory.
 
 ### Tools
 
@@ -101,13 +106,14 @@ Scenes are read when the app starts and whenever you open one from **File → Op
 - [Assimp](https://github.com/assimp/assimp): 3D model importer (glTF and OBJ importers enabled).
 - [EnTT](https://github.com/skypjack/entt): header-only entity component system.
 - [nlohmann/json](https://github.com/nlohmann/json): JSON for scene files.
+- [miniaudio](https://github.com/mackron/miniaudio): audio playback, single header.
 
 ## Project layout
 
 - `src/engine/`: the engine, built as a static library (`dgfx_engine`) that knows nothing about any game: `core/` (window, application loop, input, camera), `renderer/`, `assets/`, `scene/` (entities, components, scene files) and `ui/`.
 - `src/game/`: the game (`dgfx`), an executable on top of the engine. It derives from `Application`, registers its own components and loads its scenes.
 - `scenes/`: the scene files.
-- `shaders/`, `textures/`, `models/`: assets, loaded from here at runtime.
+- `shaders/`, `textures/`, `models/`, `sounds/`: assets, loaded from here at runtime.
 
 ## Building
 
@@ -127,3 +133,4 @@ MIT, see [LICENSE](LICENSE).
 ## Credits
 
 - "Shiba" (https://sketchfab.com/3d-models/shiba-faef9fe5ace445e7b2989d1c1ece361c) by zixisun02 (https://sketchfab.com/zixisun51), licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/).
+- Sound effects made with SuperCollider.

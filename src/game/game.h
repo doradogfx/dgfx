@@ -1,6 +1,7 @@
 #pragma once
 
 #include "assets/assets.h"
+#include "audio/audio.h"
 #include "core/camera.h"
 #include "core/input.h"
 #include "renderer/material.h"
@@ -56,7 +57,7 @@ struct Spawner {
 struct Game {
     Game(Scene& scene, Assets& assets); // for a scene loaded from level.json: finds the player entity
 
-    void update(Scene& scene, Camera& camera, const Input& input, float dt);
+    void update(Scene& scene, Camera& camera, const Input& input, Audio& audio, float dt);
 
     entt::entity player;
     int kills = 0;

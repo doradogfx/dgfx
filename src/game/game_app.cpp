@@ -42,14 +42,16 @@ void GameApp::update(float dt) {
         else if (input.pressed(GLFW_KEY_ESCAPE) && screen == Screen::Paused)
             screen = Screen::Playing;
 
-        if ((game->dead || game->won) && screen == Screen::Playing)
+        if ((game->dead || game->won) && screen == Screen::Playing) {
             screen = Screen::GameOver;
+            audio.play(game->won ? "win.wav" : "game_over.wav");
+        }
     }
 
     if (flyMode || !game)
         flyCamera(camera, input, dt);
     else if (screen == Screen::Playing)
-        game->update(scene, camera, input, dt);
+        game->update(scene, camera, input, audio, dt);
 
     if (!game)
         updateDemo(scene, camera, dt);
@@ -79,38 +81,57 @@ void GameApp::gameUI() {
 
     // A change of screen can load the scene again, which replaces the game. Return after it.
     switch (screen) {
-    case Screen::Menu:
-        if (const MenuAction action = mainMenu(); action == MenuAction::Start)
+    case Screen::Menu: {
+        const MenuAction action = mainMenu();
+
+        if (action != MenuAction::None)
+            audio.play("ui_select.wav");
+
+        if (action == MenuAction::Start)
             screen = Screen::Playing;
         else if (action == MenuAction::Quit)
             glfwSetWindowShouldClose(window.handle(), GLFW_TRUE);
         return;
+    }
 
     case Screen::Playing:
         hud(*game, scene);
 
         if (choosing) {
-            if (const int chosen = levelUpChoice(*game); chosen >= 0)
+            if (const int chosen = levelUpChoice(*game); chosen >= 0) {
+                audio.play("ui_select.wav");
                 game->choose(scene, chosen);
+            }
         }
         return;
 
-    case Screen::Paused:
+    case Screen::Paused: {
         hud(*game, scene);
+        const PauseAction action = pauseMenu();
 
-        if (const PauseAction action = pauseMenu(); action == PauseAction::Resume)
+        if (action != PauseAction::None)
+            audio.play("ui_select.wav");
+
+        if (action == PauseAction::Resume)
             screen = Screen::Playing;
         else if (action == PauseAction::Restart)
             restart(Screen::Playing);
         else if (action == PauseAction::Menu)
             restart(Screen::Menu);
         return;
+    }
 
-    case Screen::GameOver:
-        if (const GameOverAction action = endScreen(*game, scene); action == GameOverAction::Restart)
+    case Screen::GameOver: {
+        const GameOverAction action = endScreen(*game, scene);
+
+        if (action != GameOverAction::None)
+            audio.play("ui_select.wav");
+
+        if (action == GameOverAction::Restart)
             restart(Screen::Playing);
         else if (action == GameOverAction::Menu)
             restart(Screen::Menu);
         return;
+    }
     }
 }

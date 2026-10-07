@@ -79,6 +79,15 @@ FetchContent_Declare(json
     GIT_SHALLOW TRUE)
 FetchContent_MakeAvailable(json)
 
+# miniaudio: audio playback. Only the header is used, compiled in one engine file. SOURCE_SUBDIR points at a
+# folder with no CMakeLists.txt, so its own build (tests, examples) is not added.
+FetchContent_Declare(miniaudio
+    GIT_REPOSITORY https://github.com/mackron/miniaudio.git
+    GIT_TAG 0.11.25
+    GIT_SHALLOW TRUE
+    SOURCE_SUBDIR no-cmake)
+FetchContent_MakeAvailable(miniaudio)
+
 # GLAD: OpenGL 4.6 core function loader, pre-generated and vendored in external/glad.
 add_library(glad STATIC external/glad/src/glad.c)
 target_include_directories(glad PUBLIC external/glad/include)
@@ -88,6 +97,7 @@ target_include_directories(glad PUBLIC external/glad/include)
 add_library(dgfx_engine STATIC
     src/engine/assets/assets.cpp
     src/engine/assets/model.cpp
+    src/engine/audio/audio.cpp
     src/engine/core/application.cpp
     src/engine/core/input.cpp
     src/engine/core/window.cpp
@@ -107,15 +117,16 @@ add_library(dgfx_engine STATIC
     src/engine/ui/scene_panels.cpp
     src/engine/ui/ui.cpp)
 target_link_libraries(dgfx_engine PUBLIC glfw glad glm::glm imgui assimp::assimp EnTT::EnTT nlohmann_json::nlohmann_json)
-target_include_directories(dgfx_engine PUBLIC src/engine PRIVATE ${stb_SOURCE_DIR})
+target_include_directories(dgfx_engine PUBLIC src/engine PRIVATE ${stb_SOURCE_DIR} ${miniaudio_SOURCE_DIR})
 
-# Shaders, textures, models and scenes are loaded from the source tree, so the exe finds them regardless of its working directory.
+# Shaders, textures, models, scenes and sounds are loaded from the source tree, so the exe finds them regardless of its working directory.
 # ponytail: absolute source path, copy them next to the exe if it ever ships without the repo.
 target_compile_definitions(dgfx_engine PRIVATE
     SHADER_DIR="${CMAKE_SOURCE_DIR}/shaders/"
     TEXTURE_DIR="${CMAKE_SOURCE_DIR}/textures/"
     MODEL_DIR="${CMAKE_SOURCE_DIR}/models/"
-    SCENE_DIR="${CMAKE_SOURCE_DIR}/scenes/")
+    SCENE_DIR="${CMAKE_SOURCE_DIR}/scenes/"
+    SOUND_DIR="${CMAKE_SOURCE_DIR}/sounds/")
 
 # The game: an executable on top of the engine. src/ is its include root, for "game/game.h".
 add_executable(dgfx

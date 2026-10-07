@@ -6,17 +6,17 @@
 #include <algorithm>
 #include <vector>
 
-void updateWeapon(Scene& scene, entt::entity player, const Mesh& mesh, const Material& material, float dt) {
+bool updateWeapon(Scene& scene, entt::entity player, const Mesh& mesh, const Material& material, float dt) {
     entt::registry& registry = scene.registry;
     Weapon* weapon = registry.try_get<Weapon>(player);
 
     if (!weapon)
-        return;
+        return false;
 
     weapon->timer = std::min(weapon->timer + dt, weapon->interval);
 
     if (weapon->timer < weapon->interval)
-        return;
+        return false;
 
     const glm::vec3 playerPosition = registry.get<Transform>(player).position;
 
@@ -37,7 +37,7 @@ void updateWeapon(Scene& scene, entt::entity player, const Mesh& mesh, const Mat
 
     // With no target, the timer stays full. The weapon fires when the first enemy comes in range.
     if (!target)
-        return;
+        return false;
 
     weapon->timer = 0.0f;
 
@@ -50,10 +50,12 @@ void updateWeapon(Scene& scene, entt::entity player, const Mesh& mesh, const Mat
     registry.emplace<Projectile>(shot, projectile);
     registry.emplace<Transient>(shot); // Made while playing. The scene file does not save it.
     registry.emplace<MeshRenderer>(shot, &mesh, material);
+    return true;
 }
 
-std::vector<Death> updateProjectiles(Scene& scene, float dt) {
+ProjectileResult updateProjectiles(Scene& scene, float dt) {
     entt::registry& registry = scene.registry;
+    ProjectileResult result;
 
     // The entities to destroy. Destroy them after the loops, because destroying inside a loop breaks the loop.
     std::vector<entt::entity> finished;
@@ -71,6 +73,7 @@ std::vector<Death> updateProjectiles(Scene& scene, float dt) {
         for (auto [enemyEntity, enemyTransform, enemy, health] : registry.view<Transform, Enemy, Health>().each()) {
             if (glm::distance(enemyTransform.position, transform.position) < enemy.radius + projectile.radius) {
                 health.current -= projectile.damage;
+                result.hits++;
                 finished.push_back(entity);
                 break;
             }
@@ -78,12 +81,10 @@ std::vector<Death> updateProjectiles(Scene& scene, float dt) {
     }
 
     // Each dead enemy gives one death, even if two projectiles hit it in the same frame.
-    std::vector<Death> deaths;
-
     for (auto [entity, transform, enemy, health] : registry.view<Transform, Enemy, Health>().each()) {
         if (health.current <= 0.0f) {
             finished.push_back(entity);
-            deaths.push_back({transform.position, enemy.xpValue});
+            result.deaths.push_back({transform.position, enemy.xpValue});
         }
     }
 
@@ -91,5 +92,5 @@ std::vector<Death> updateProjectiles(Scene& scene, float dt) {
     finished.erase(std::unique(finished.begin(), finished.end()), finished.end());
     registry.destroy(finished.begin(), finished.end());
 
-    return deaths;
+    return result;
 }

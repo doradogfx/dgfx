@@ -1,6 +1,7 @@
 #pragma once
 
 #include "assets/assets.h"
+#include "audio/audio.h"
 #include "core/camera.h"
 #include "core/input.h"
 #include "core/window.h"
@@ -47,6 +48,7 @@ protected:
     // Declaration order matters: members are destroyed in reverse, so the window (and its GL context) goes
     // last, and the assets come before the scene whose components point into them.
     Window window;
+    Audio audio;
     Assets assets;
     Scene scene;
     Renderer renderer;

@@ -29,6 +29,10 @@ inline float xpToNext(const Experience& experience) {
 
 void spawnOrb(Scene& scene, const Mesh& mesh, const Material& material, glm::vec3 position, float value);
 
+struct OrbResult {
+    int taken = 0;  // orbs that the player took
+    int levels = 0; // levels that the player gained
+};
+
 // Moves the orbs that are close to the player, and takes the orbs that touch the player.
-// Returns the number of levels that the player gained.
-int updateOrbs(Scene& scene, entt::entity player, float playerRadius, float dt);
+OrbResult updateOrbs(Scene& scene, entt::entity player, float playerRadius, float dt);

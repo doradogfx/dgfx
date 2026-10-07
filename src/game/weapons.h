@@ -26,8 +26,8 @@ struct Projectile {
     float radius = 0.1f;
 };
 
-// Fires the weapon at the nearest enemy in range when the weapon is ready.
-void updateWeapon(Scene& scene, entt::entity player, const Mesh& mesh, const Material& material, float dt);
+// Fires the weapon at the nearest enemy in range when the weapon is ready. Returns true when it fires.
+bool updateWeapon(Scene& scene, entt::entity player, const Mesh& mesh, const Material& material, float dt);
 
 // Where an enemy died, and how much XP it gives.
 struct Death {
@@ -35,6 +35,10 @@ struct Death {
     float xp;
 };
 
+struct ProjectileResult {
+    std::vector<Death> deaths; // one for each enemy that died
+    int hits = 0;              // projectiles that hit an enemy
+};
+
 // Moves the projectiles and applies the hits. Destroys the finished projectiles and the dead enemies.
-// Returns one Death for each enemy that died.
-std::vector<Death> updateProjectiles(Scene& scene, float dt);
+ProjectileResult updateProjectiles(Scene& scene, float dt);

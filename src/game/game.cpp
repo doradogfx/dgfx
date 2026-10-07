@@ -87,7 +87,7 @@ void Game::updateWorld(Scene& scene) {
     spawnProps(scene, props, terrain, playerStart, *cubeMesh, *enemyMesh);
 }
 
-void Game::update(Scene& scene, Camera& camera, const Input& input, float dt) {
+void Game::update(Scene& scene, Camera& camera, const Input& input, Audio& audio, float dt) {
     // The player can be deleted from the editor UI.
     if (!scene.registry.valid(player) || !scene.registry.all_of<Player, Health>(player))
         return;
@@ -135,6 +135,7 @@ void Game::update(Scene& scene, Camera& camera, const Input& input, float dt) {
 
     if (p.grounded && input.down(GLFW_KEY_SPACE)) {
         p.verticalVelocity = p.jumpSpeed;
+        audio.play("jump.wav", 0.5f);
         p.grounded = false;
     }
 
@@ -164,11 +165,25 @@ void Game::update(Scene& scene, Camera& camera, const Input& input, float dt) {
     camera.position = target - camera.front() * cameraDistance;
     camera.position.y = std::max(camera.position.y, heightAt(terrain, camera.position.x, camera.position.z) + 0.2f);
 
+    const float healthBefore = scene.registry.get<Health>(player).current;
     updateEnemies(scene, dt);
-    updateWeapon(scene, player, *enemyMesh, projectileMaterial, dt);
+
+    // Contact damage is a small amount each frame, so the sound has a long gap.
+    if (scene.registry.get<Health>(player).current < healthBefore)
+        audio.play("player_hurt.wav", 0.5f, 0.4f);
+
+    if (updateWeapon(scene, player, *enemyMesh, projectileMaterial, dt))
+        audio.play("shoot.wav", 0.5f);
+
+    const ProjectileResult shots = updateProjectiles(scene, dt);
+
+    if (shots.hits > 0)
+        audio.play("hit.wav", 0.5f, 0.05f);
+    if (!shots.deaths.empty())
+        audio.play("enemy_death.wav", 0.5f, 0.05f);
 
     // Each dead enemy that gives XP drops an orb on the floor where it died.
-    for (const Death& death : updateProjectiles(scene, dt)) {
+    for (const Death& death : shots.deaths) {
         kills++;
 
         if (death.xp > 0.0f)
@@ -181,12 +196,19 @@ void Game::update(Scene& scene, Camera& camera, const Input& input, float dt) {
         won = true;
     }
 
-    const int levels = updateOrbs(scene, player, kPlayerRadius, dt);
+    const OrbResult orbs = updateOrbs(scene, player, kPlayerRadius, dt);
 
-    if (levels > 0 && pendingLevelUps == 0)
-        rollChoices();
+    if (orbs.taken > 0)
+        audio.play("xp_pickup.wav", 0.5f, 0.05f);
 
-    pendingLevelUps += levels;
+    if (orbs.levels > 0) {
+        audio.play("level_up.wav", 0.5f);
+
+        if (pendingLevelUps == 0)
+            rollChoices();
+    }
+
+    pendingLevelUps += orbs.levels;
 }
 
 void Game::updateEnemies(Scene& scene, float dt) {
