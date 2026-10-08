@@ -27,7 +27,9 @@ public:
 
     // Sun shadows.
     bool shadows = true;
-    int shadowResolution = 2048;
+    int shadowResolution = 4096; // the shadow area covers the whole arena, so it needs many texels
+    glm::vec3 shadowCenter{0.0f}; // the middle of the area that gets shadows
+    float shadowRadius = 30.0f;   // a sphere around the center: everything inside casts and receives shadows
     float shadowBiasMin = 0.0005f;
     float shadowBiasMax = 0.005f;
     bool pcf = true;

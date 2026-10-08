@@ -34,6 +34,7 @@ void rendererPanel(Renderer& renderer) {
         ImGui::EndCombo();
     }
 
+    ImGui::DragFloat("Area radius", &renderer.shadowRadius, 0.5f, 1.0f, 500.0f, "%.1f");
     ImGui::SliderFloat("Bias min", &renderer.shadowBiasMin, 0.0f, 0.01f, "%.4f");
     ImGui::SliderFloat("Bias max", &renderer.shadowBiasMax, 0.0f, 0.05f, "%.4f");
     ImGui::Checkbox("PCF (soft edges)", &renderer.pcf);
