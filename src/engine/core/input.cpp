@@ -46,8 +46,10 @@ void Input::update() {
     for (int key = GLFW_KEY_SPACE; key <= GLFW_KEY_LAST; key++)
         keys[key] = glfwGetKey(window, key) == GLFW_PRESS;
 
-    if (pressed(GLFW_KEY_TAB))
+#if DGFX_EDITOR
+    if (pressed(GLFW_KEY_TAB)) // UI mode, for the debug panels
         setCaptured(!captured);
+#endif
 
     // Give the cursor back when switching to another window. In UI mode, a click that isn't on a panel
     // goes back to captured mode.

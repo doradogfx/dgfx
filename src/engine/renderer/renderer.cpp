@@ -1,15 +1,21 @@
 #include "renderer/renderer.h"
 
+#include "core/paths.h"
+
 #include <glm/gtc/matrix_transform.hpp>
 
 #include <vector>
 
+static std::string shaderPath(const char* file) {
+    return assetRoot() + "shaders/" + file;
+}
+
 Renderer::Renderer(int width, int height)
-    : lit(SHADER_DIR "lit.vert", SHADER_DIR "lit.frag"),
-      lamp(SHADER_DIR "lit.vert", SHADER_DIR "light.frag"),
-      post(SHADER_DIR "post.vert", SHADER_DIR "post.frag"),
-      depth(SHADER_DIR "shadow.vert", SHADER_DIR "shadow.frag"),
-      skybox(SHADER_DIR "skybox.vert", SHADER_DIR "skybox.frag"),
+    : lit(shaderPath("lit.vert"), shaderPath("lit.frag")),
+      lamp(shaderPath("lit.vert"), shaderPath("light.frag")),
+      post(shaderPath("post.vert"), shaderPath("post.frag")),
+      depth(shaderPath("shadow.vert"), shaderPath("shadow.frag")),
+      skybox(shaderPath("skybox.vert"), shaderPath("skybox.frag")),
       cube(makeCube()),
       sphere(makeSphere()),
       white(glm::vec3(1.0f)),

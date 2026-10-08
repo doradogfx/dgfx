@@ -34,8 +34,10 @@ void GameApp::restart(Screen next) {
 }
 
 void GameApp::update(float dt) {
-    if (input.pressed(GLFW_KEY_F1))
+#if DGFX_EDITOR
+    if (input.pressed(GLFW_KEY_F1)) // the debug fly camera
         flyMode = !flyMode;
+#endif
 
     if (game) {
         if (input.pressed(GLFW_KEY_ESCAPE) && screen == Screen::Playing)

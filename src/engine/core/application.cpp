@@ -1,5 +1,6 @@
 #include "core/application.h"
 
+#include "core/paths.h"
 #include "scene/scene_io.h"
 #include "ui/ui.h"
 
@@ -22,7 +23,7 @@ Application::Application()
 static std::vector<std::string> sceneFiles() {
     std::vector<std::string> names;
 
-    for (const auto& entry : std::filesystem::directory_iterator(SCENE_DIR)) {
+    for (const auto& entry : std::filesystem::directory_iterator(assetRoot() + "scenes/")) {
         if (entry.path().extension() == ".json")
             names.push_back(entry.path().filename().string());
     }
@@ -33,12 +34,12 @@ static std::vector<std::string> sceneFiles() {
 
 void Application::loadScene(const std::string& file) {
     scene.registry = entt::registry(); // fresh, so ids count up from 0 in creation order (clear() would recycle them)
-    ::loadScene(scene, assets, components, SCENE_DIR + file);
+    ::loadScene(scene, assets, components, assetRoot() + "scenes/" + file);
     currentScene = file;
 }
 
 void Application::saveScene(const std::string& file) const {
-    ::saveScene(scene, assets, components, SCENE_DIR + file);
+    ::saveScene(scene, assets, components, assetRoot() + "scenes/" + file);
 }
 
 Application::~Application() {
@@ -76,6 +77,7 @@ void Application::run() {
 
         beginUI();
 
+#if DGFX_EDITOR
         UiContext ui{
             scene, assets, renderer, components, currentScene,
             [this] {
@@ -93,6 +95,7 @@ void Application::run() {
         };
 
         debugUI(handle, ui);
+#endif
         gameUI();
 
         renderer.render(scene, camera, size.x, size.y);

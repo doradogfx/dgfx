@@ -4,6 +4,9 @@ project(dgfx LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# OFF for a build to give to players: no debug panels or developer keys (F1, Tab), and the assets go next to the exe.
+option(DGFX_EDITOR "Debug panels, scene editing and developer keys" ON)
+
 # GLFW: window, OpenGL context and input. Fetched and built from source at configure time.
 include(FetchContent)
 set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
@@ -100,6 +103,7 @@ add_library(dgfx_engine STATIC
     src/engine/audio/audio.cpp
     src/engine/core/application.cpp
     src/engine/core/input.cpp
+    src/engine/core/paths.cpp
     src/engine/core/window.cpp
     src/engine/renderer/cubemap.cpp
     src/engine/renderer/framebuffer.cpp
@@ -119,14 +123,11 @@ add_library(dgfx_engine STATIC
 target_link_libraries(dgfx_engine PUBLIC glfw glad glm::glm imgui assimp::assimp EnTT::EnTT nlohmann_json::nlohmann_json)
 target_include_directories(dgfx_engine PUBLIC src/engine PRIVATE ${stb_SOURCE_DIR} ${miniaudio_SOURCE_DIR})
 
-# Shaders, textures, models, scenes and sounds are loaded from the source tree, so the exe finds them regardless of its working directory.
-# ponytail: absolute source path, copy them next to the exe if it ever ships without the repo.
-target_compile_definitions(dgfx_engine PRIVATE
-    SHADER_DIR="${CMAKE_SOURCE_DIR}/shaders/"
-    TEXTURE_DIR="${CMAKE_SOURCE_DIR}/textures/"
-    MODEL_DIR="${CMAKE_SOURCE_DIR}/models/"
-    SCENE_DIR="${CMAKE_SOURCE_DIR}/scenes/"
-    SOUND_DIR="${CMAKE_SOURCE_DIR}/sounds/")
+# Editor build: assets are read from the source tree, so the exe only runs while the repository stays where it
+# was built. A build without the editor reads them from next to the exe (see core/paths.h).
+target_compile_definitions(dgfx_engine
+    PUBLIC DGFX_EDITOR=$<BOOL:${DGFX_EDITOR}>
+    PRIVATE ASSET_ROOT="${CMAKE_SOURCE_DIR}/")
 
 # The game: an executable on top of the engine. src/ is its include root, for "game/game.h".
 add_executable(dgfx
@@ -144,3 +145,33 @@ add_executable(dgfx
     src/game/xp.cpp)
 target_link_libraries(dgfx PRIVATE dgfx_engine)
 target_include_directories(dgfx PRIVATE src ${stb_SOURCE_DIR}) # stb for stb_perlin.h
+
+# A build for players.
+if(NOT DGFX_EDITOR)
+    # No console window. The entry point stays main() instead of WinMain.
+    set_target_properties(dgfx PROPERTIES WIN32_EXECUTABLE ON)
+    if(MSVC)
+        target_link_options(dgfx PRIVATE /ENTRY:mainCRTStartup)
+    endif()
+
+    # The assets next to the exe, where assetRoot() looks for them.
+    # ponytail: copies the whole folders (also the demo scene and the sound sources). Filter them if size matters.
+    foreach(folder shaders textures models scenes sounds)
+        add_custom_command(TARGET dgfx POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/${folder} $<TARGET_FILE_DIR:dgfx>/${folder})
+    endforeach()
+
+    # The licenses of the libraries in the exe. MIT, BSD and zlib want their notices with a binary copy.
+    set(licenses_dir $<TARGET_FILE_DIR:dgfx>/licenses)
+    add_custom_command(TARGET dgfx POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${licenses_dir}
+        COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/LICENSE ${licenses_dir}/dgfx.txt
+        COMMAND ${CMAKE_COMMAND} -E copy ${glfw_SOURCE_DIR}/LICENSE.md ${licenses_dir}/glfw.txt
+        COMMAND ${CMAKE_COMMAND} -E copy ${stb_SOURCE_DIR}/LICENSE ${licenses_dir}/stb.txt
+        COMMAND ${CMAKE_COMMAND} -E copy ${glm_SOURCE_DIR}/copying.txt ${licenses_dir}/glm.txt
+        COMMAND ${CMAKE_COMMAND} -E copy ${imgui_SOURCE_DIR}/LICENSE.txt ${licenses_dir}/imgui.txt
+        COMMAND ${CMAKE_COMMAND} -E copy ${assimp_SOURCE_DIR}/LICENSE ${licenses_dir}/assimp.txt
+        COMMAND ${CMAKE_COMMAND} -E copy ${entt_SOURCE_DIR}/LICENSE ${licenses_dir}/entt.txt
+        COMMAND ${CMAKE_COMMAND} -E copy ${json_SOURCE_DIR}/LICENSE.MIT ${licenses_dir}/nlohmann_json.txt
+        COMMAND ${CMAKE_COMMAND} -E copy ${miniaudio_SOURCE_DIR}/LICENSE ${licenses_dir}/miniaudio.txt)
+endif()

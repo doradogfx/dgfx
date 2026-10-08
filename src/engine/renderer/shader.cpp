@@ -39,9 +39,9 @@ static GLuint compile(GLenum type, const char* path) {
     return shader;
 }
 
-Shader::Shader(const char* vertPath, const char* fragPath) {
-    GLuint vs = compile(GL_VERTEX_SHADER, vertPath);
-    GLuint fs = compile(GL_FRAGMENT_SHADER, fragPath);
+Shader::Shader(const std::string& vertPath, const std::string& fragPath) {
+    GLuint vs = compile(GL_VERTEX_SHADER, vertPath.c_str());
+    GLuint fs = compile(GL_FRAGMENT_SHADER, fragPath.c_str());
 
     id = glCreateProgram();
     glAttachShader(id, vs);
@@ -54,7 +54,7 @@ Shader::Shader(const char* vertPath, const char* fragPath) {
     if (!linked) {
         char log[1024];
         glGetProgramInfoLog(id, sizeof(log), nullptr, log);
-        std::fprintf(stderr, "Program link error (%s + %s):\n%s\n", vertPath, fragPath, log);
+        std::fprintf(stderr, "Program link error (%s + %s):\n%s\n", vertPath.c_str(), fragPath.c_str(), log);
     }
 
     // The linked program keeps its own copy; the shader objects are no longer needed.

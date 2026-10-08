@@ -1,5 +1,7 @@
 #include "assets/assets.h"
 
+#include "core/paths.h"
+
 #include <stdexcept>
 
 const Mesh& Assets::mesh(const std::string& name) {
@@ -18,14 +20,14 @@ const Mesh& Assets::mesh(const std::string& name) {
 }
 
 const Texture& Assets::texture(const std::string& file, bool srgb) {
-    return textures.get(TEXTURE_DIR + file, srgb);
+    return textures.get(assetRoot() + "textures/" + file, srgb);
 }
 
 const Model& Assets::model(const std::string& file) {
     std::unique_ptr<Model>& slot = models[file];
 
     if (!slot)
-        slot = std::make_unique<Model>(MODEL_DIR + file, textures);
+        slot = std::make_unique<Model>(assetRoot() + "models/" + file, textures);
 
     return *slot;
 }
@@ -34,7 +36,7 @@ const Cubemap& Assets::cubemap(const std::string& directory) {
     std::unique_ptr<Cubemap>& slot = cubemaps[directory];
 
     if (!slot)
-        slot = std::make_unique<Cubemap>((TEXTURE_DIR + directory).c_str());
+        slot = std::make_unique<Cubemap>((assetRoot() + "textures/" + directory).c_str());
 
     return *slot;
 }
@@ -55,7 +57,7 @@ std::string Assets::name(const Mesh& mesh) const {
 
 std::string Assets::name(const Texture& texture) const {
     const std::string path = textures.pathOf(texture);
-    const std::string root = TEXTURE_DIR;
+    const std::string root = assetRoot() + "textures/";
 
     if (path.compare(0, root.size(), root) != 0)
         throw std::runtime_error("Texture isn't under the textures folder: " + path);

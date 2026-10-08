@@ -3,12 +3,14 @@
 #include <glad/glad.h>
 #include <glm/glm.hpp>
 
+#include <string>
+
 class Shader {
 public:
     // Program ID
     GLuint id = 0;
 
-    Shader(const char* vertPath, const char* fragPath);
+    Shader(const std::string& vertPath, const std::string& fragPath);
     ~Shader();
 
     // Use/activate the shader

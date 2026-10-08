@@ -1,5 +1,7 @@
 #include "audio/audio.h"
 
+#include "core/paths.h"
+
 #define MINIAUDIO_IMPLEMENTATION
 #include <miniaudio.h>
 
@@ -51,7 +53,7 @@ void Audio::play(const std::string& file, float volume, float minGap) {
 
     auto [it, added] = impl->sounds.try_emplace(file);
     Impl::Sound& sound = it->second;
-    const std::string path = SOUND_DIR + file;
+    const std::string path = assetRoot() + "sounds/" + file;
 
     // The first play loads the file. A file that does not load stays silent, with one message.
     if (added) {

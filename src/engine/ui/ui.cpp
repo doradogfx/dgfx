@@ -13,6 +13,10 @@
 
 void initUI(GLFWwindow* window) {
     ImGui::CreateContext();
+
+#if !DGFX_EDITOR
+    ImGui::GetIO().IniFilename = nullptr; // no panels to remember, so no imgui.ini next to the game
+#endif
     ImGui_ImplGlfw_InitForOpenGL(window, true); // true = install its callbacks, chaining to existing ones
     ImGui_ImplOpenGL3_Init("#version 460");
     initUiScale();

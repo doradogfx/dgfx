@@ -62,12 +62,12 @@ A simplified 3D survivors-like built on the engine.
 | W / A / S / D | Run forward / left / back / right |
 | Space | Jump |
 | Scroll wheel | Camera distance |
-| F1 | Toggle the debug fly camera |
+| F1 | Toggle the debug fly camera (editor build) |
 | Esc | Pause / resume |
 | Enter | Start, resume or restart on the menus |
 | 1 / 2 / 3 | Pick a level-up upgrade |
-| Tab | Toggle captured mode (cursor hidden) / UI mode (cursor free, to use the panels) |
-| Click outside the panels | Back to captured mode (the cursor is also released when the window loses focus) |
+| Tab | Toggle captured mode (cursor hidden) / UI mode (cursor free, to use the panels) (editor build) |
+| Click outside the panels | Back to captured mode (editor build; the cursor is also released when the window loses focus) |
 
 Fly camera: mouse to look, W / A / S / D to move, Space / Left Ctrl up / down, Left Shift faster, scroll wheel to zoom.
 
@@ -121,12 +121,25 @@ Scenes are read when the app starts and whenever you open one from **File → Op
 
 Requires CMake 3.20+, a C++20 compiler and a GPU with OpenGL 4.6. Developed and tested on Windows with MSVC. The first configure downloads and builds the dependencies, so it needs an internet connection and takes a few minutes (Assimp is the slow one).
 
+There are two kinds of build, chosen with the `DGFX_EDITOR` CMake option.
+
+**Editor build** (`DGFX_EDITOR=ON`, the default): the debug panels, scene editing and the developer keys (F1, Tab).
+
 ```
 cmake -S . -B build
 cmake --build build --config Debug
 ```
 
-Run `build/Debug/dgfx.exe`. Shaders, textures, models and scenes are read from the source tree by absolute path, so it runs from any working directory, but only while the repository stays where it was built. In Visual Studio, open the folder (it's a CMake project) and run `dgfx.exe`.
+Run `build/Debug/dgfx.exe`. Shaders, textures, models, scenes and sounds are read from the source tree by absolute path, so **File → Save scene** writes into the repository. The exe runs from any working directory, but only while the repository stays where it was built. In Visual Studio, open the folder (it's a CMake project) and run `dgfx.exe`.
+
+**Game build** (`DGFX_EDITOR=OFF`): only the game, without a console window. The build copies the assets and the third-party licenses next to the exe, so the output folder runs anywhere.
+
+```
+cmake -S . -B build-release -DDGFX_EDITOR=OFF
+cmake --build build-release --config Release
+```
+
+The game is the `build-release/Release/` folder: `dgfx.exe` with `shaders/`, `textures/`, `models/`, `scenes/`, `sounds/` and `licenses/`. The `.lib` files there are not needed to run it.
 
 ## License
 
