@@ -17,6 +17,7 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Experience, base, step, pickupRa
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Spawner, interval, minInterval, maxEnemies, ringRadius, ramp, enemyHealth,
                                                 enemySpeed, maxEnemySpeed, enemyDamage, bossTime, bossHealth)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Weapon, damage, interval, range, projectileSpeed)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Orbit, blades, radius, speed, damage, hitInterval)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Props, rocks, trees, clearRadius)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Terrain,size, resolution, base, amplitude, frequency, octaves, seed, color)
 
@@ -47,6 +48,14 @@ void registerGameComponents(ComponentRegistry& components) {
         ImGui::DragFloat("Interval", &weapon.interval, 0.01f, 0.05f, 10.0f, "%.2f s");
         ImGui::DragFloat("Range", &weapon.range, 0.1f, 1.0f, 100.0f);
         ImGui::DragFloat("Projectile speed", &weapon.projectileSpeed, 0.1f, 1.0f, 100.0f, "%.1f u/s");
+    });
+
+    components.add<Orbit>("Orbit blades", [](Orbit& orbit) {
+        ImGui::DragInt("Blades", &orbit.blades, 0.1f, 0, 32);
+        ImGui::DragFloat("Radius", &orbit.radius, 0.05f, 0.5f, 20.0f);
+        ImGui::DragFloat("Speed", &orbit.speed, 1.0f, 0.0f, 2000.0f, "%.0f deg/s");
+        ImGui::DragFloat("Damage", &orbit.damage, 0.5f, 0.0f, 1000.0f);
+        ImGui::DragFloat("Hit interval", &orbit.hitInterval, 0.01f, 0.0f, 10.0f, "%.2f s");
     });
 
     components.add<Experience>("Experience", [](Experience& experience) {

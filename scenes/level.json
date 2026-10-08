@@ -88,6 +88,13 @@
         "current": 100.0,
         "max": 100.0
       },
+      "Orbit blades": {
+        "blades": 0,
+        "damage": 8.0,
+        "hitInterval": 0.5,
+        "radius": 1.2,
+        "speed": 180.0
+      },
       "Player": {
         "jumpSpeed": 7.0,
         "speed": 5.0

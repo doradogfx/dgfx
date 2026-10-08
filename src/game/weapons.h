@@ -26,6 +26,20 @@ struct Projectile {
     float radius = 0.1f;
 };
 
+// Blades that turn around the player and hurt the enemies they touch. Put it on the player entity.
+// With 0 blades, the weapon is off. A level-up upgrade adds blades.
+struct Orbit {
+    int blades = 0;
+    float radius = 1.2f;      // distance from the player. Enemies stop 0.8 away, so the blades must reach them there.
+    float speed = 180.0f;     // degrees per second
+    float damage = 8.0f;      // health that one touch removes
+    float hitInterval = 0.5f; // seconds before the same enemy can take damage again
+    float angle = 0.0f;       // where the first blade is now. Not saved.
+};
+
+// Tag on each blade entity. The game makes the blades, the scene file does not save them.
+struct OrbitBlade {};
+
 // Fires the weapon at the nearest enemy in range when the weapon is ready. Returns true when it fires.
 bool updateWeapon(Scene& scene, entt::entity player, const Mesh& mesh, const Material& material, float dt);
 
@@ -42,3 +56,7 @@ struct ProjectileResult {
 
 // Moves the projectiles and applies the hits. Destroys the finished projectiles and the dead enemies.
 ProjectileResult updateProjectiles(Scene& scene, float dt);
+
+// Moves the orbit blades and applies their hits. The dead enemies stay until updateProjectiles removes them.
+// Returns the number of hits.
+int updateOrbit(Scene& scene, entt::entity player, const Mesh& mesh, const Material& material, float dt);

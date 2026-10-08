@@ -12,7 +12,8 @@ A simplified 3D survivors-like built on the engine.
 - **Player**: runs relative to the camera, turns to face where it's going, and jumps with gravity.
 - **Enemies**: spawn on a ring around the player, chase it and drain its health on contact. They collide: they push each other apart, they cannot overlap the player, and everyone stays inside the arena.
 - **Automatic weapon**: shoots projectiles at the nearest enemy in range. Enemies have health, flash white when hit and are destroyed at zero; the stats overlay counts kills.
-- **Experience**: dead enemies drop XP orbs. Orbs near the player fly to it and raise its level. At each level-up the game pauses and offers 3 random upgrades (damage, fire rate, move speed, pickup radius, max health).
+- **Orbit blades**: a second weapon from a level-up. Blades turn around the player and hurt each enemy they touch, with a short wait before the same enemy can be hurt again. Each pick adds a blade.
+- **Experience**: dead enemies drop XP orbs. Orbs near the player fly to it and raise its level. At each level-up the game pauses and offers 3 random upgrades (damage for both weapons, fire rate, move speed, pickup radius, max health, one more orbit blade).
 - **Difficulty and boss**: the game gets harder over time. Enemies spawn faster and get more health and speed. At 5:00 a boss comes, and killing it wins the run.
 - **Sound**: effects for shots, hits, deaths, XP pickups, level-ups, jumps, damage, menus, game over and win.
 - **Game flow**: a main menu, a HUD (health, XP and level, time, kills), pause, game over or win with the run stats, and restart.

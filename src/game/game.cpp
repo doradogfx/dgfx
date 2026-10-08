@@ -175,9 +175,11 @@ void Game::update(Scene& scene, Camera& camera, const Input& input, Audio& audio
     if (updateWeapon(scene, player, *enemyMesh, projectileMaterial, dt))
         audio.play("shoot.wav", 0.5f);
 
+    // Before the projectiles: their death pass also removes the enemies that the blades kill.
+    const int bladeHits = updateOrbit(scene, player, *cubeMesh, bladeMaterial, dt);
     const ProjectileResult shots = updateProjectiles(scene, dt);
 
-    if (shots.hits > 0)
+    if (shots.hits + bladeHits > 0)
         audio.play("hit.wav", 0.5f, 0.05f);
     if (!shots.deaths.empty())
         audio.play("enemy_death.wav", 0.5f, 0.05f);
