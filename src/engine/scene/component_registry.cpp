@@ -14,6 +14,7 @@
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(DirLight, enabled, ambient, diffuse, specular)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(PointLight, enabled, ambient, diffuse, specular, constant, linear, quadratic)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(SpotLight, enabled, ambient, diffuse, specular, constant, linear, quadratic, innerAngle, outerAngle)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Camera, fov, nearPlane, farPlane)
 
 void ComponentRegistry::inspect(entt::registry& registry, entt::entity entity, Assets& assets) const {
     for (const Entry& entry : entries) {
@@ -78,6 +79,12 @@ void registerEngineComponents(ComponentRegistry& components) {
     components.add<DirLight>("Directional light", [](DirLight& light) { lightUI(light); });
     components.add<PointLight>("Point light", [](PointLight& light) { lightUI(light); });
     components.add<SpotLight>("Spot light", [](SpotLight& light) { lightUI(light); });
+
+    components.add<Camera>("Camera", [](Camera& camera) {
+        ImGui::DragFloat("Field of view", &camera.fov, 0.5f, 1.0f, 120.0f, "%.1f deg");
+        ImGui::DragFloat("Near", &camera.nearPlane, 0.01f, 0.01f, camera.farPlane, "%.2f");
+        ImGui::DragFloat("Far", &camera.farPlane, 1.0f, camera.nearPlane, 10000.0f, "%.0f");
+    });
 
     components.add<MeshRenderer>(
         "Mesh renderer",

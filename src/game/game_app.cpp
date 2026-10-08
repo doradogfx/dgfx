@@ -19,11 +19,6 @@ void GameApp::openScene(const std::string& file) {
     flyMode = false;
     screen = Screen::Playing;
 
-    // The starting view for scenes without a player to follow.
-    camera = Camera();
-    camera.position = glm::vec3(0.0f, 2.0f, 6.0f);
-    camera.pitch = -15.0f;
-
     if (!scene.registry.view<Player>().empty())
         game.emplace(scene, assets);
 }
@@ -52,12 +47,12 @@ void GameApp::update(float dt) {
     }
 
     if (flyMode || !game)
-        flyCamera(camera, input, dt);
+        flyCamera(scene, input, dt);
     else if (screen == Screen::Playing)
-        game->update(scene, camera, input, audio, dt);
+        game->update(scene, input, audio, dt);
 
     if (!game)
-        updateDemo(scene, camera, dt);
+        updateDemo(scene, dt);
 }
 
 void GameApp::statsOverlay() {

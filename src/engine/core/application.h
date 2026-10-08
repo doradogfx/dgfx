@@ -2,7 +2,6 @@
 
 #include "assets/assets.h"
 #include "audio/audio.h"
-#include "core/camera.h"
 #include "core/input.h"
 #include "core/window.h"
 #include "renderer/renderer.h"
@@ -54,7 +53,6 @@ protected:
     Renderer renderer;
     ComponentRegistry components;
     Input input; // before the UI starts, so ImGui chains to its scroll callback
-    Camera camera;
 
 private:
     std::string currentScene;

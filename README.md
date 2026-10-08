@@ -52,7 +52,7 @@ A simplified 3D survivors-like built on the engine.
 
 - **Debug UI** with Dear ImGui: separate panels for the scene hierarchy, the selected entity's components, and rendering and display settings, plus a stats overlay.
 - **Scene editing** from the UI: add, duplicate and delete entities, add and remove components, save.
-- **Debug fly camera** (F1): mouse look, WASD movement, zoom, frame-rate independent speed.
+- **Debug fly camera** (F1): mouse look, WASD movement, frame-rate independent speed.
 
 ## Controls
 
@@ -69,7 +69,7 @@ A simplified 3D survivors-like built on the engine.
 | Tab | Toggle captured mode (cursor hidden) / UI mode (cursor free, to use the panels) (editor build) |
 | Click outside the panels | Back to captured mode (editor build; the cursor is also released when the window loses focus) |
 
-Fly camera: mouse to look, W / A / S / D to move, Space / Left Ctrl up / down, Left Shift faster, scroll wheel to zoom.
+Fly camera: mouse to look, W / A / S / D to move, Space / Left Ctrl up / down, Left Shift faster.
 
 The **File** menu has **Open scene** (it lists the files in `scenes/`), **Save scene** and **Exit**. Closing the window also quits. A scene with a player entity is played; any other scene, like the demo, is explored with the fly camera.
 

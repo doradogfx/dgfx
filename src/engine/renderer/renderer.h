@@ -1,6 +1,5 @@
 #pragma once
 
-#include "core/camera.h"
 #include "renderer/framebuffer.h"
 #include "renderer/mesh.h"
 #include "renderer/shader.h"
@@ -39,7 +38,7 @@ public:
     ~Renderer();
 
     // Draws a frame: the scene into the off-screen target, then the post pass onto the window.
-    void render(Scene& scene, const Camera& camera, int width, int height);
+    void render(Scene& scene, int width, int height);
 
     int drawCalls = 0; // draw calls with the lit and lamp shaders in the last frame
     int instances = 0; // objects that those draw calls drew

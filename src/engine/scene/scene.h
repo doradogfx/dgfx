@@ -12,6 +12,8 @@
 // Euler rotation (degrees) that points an entity's -Z axis along `direction`.
 glm::vec3 aimRotation(glm::vec3 direction);
 
+inline constexpr glm::vec3 kWorldUp{0.0f, 1.0f, 0.0f};
+
 // The world: the entities, plus the skybox. Meshes, textures and models live in Assets, which components point
 // into. It starts empty, a scene is filled by loading a scene file.
 struct Scene {
@@ -31,4 +33,7 @@ struct Scene {
 
     // Destroys the entity and everything parented under it.
     void destroy(entt::entity entity);
+
+    // The first entity with a Camera, or entt::null. The renderer draws the scene as this entity sees it.
+    entt::entity camera() const;
 };

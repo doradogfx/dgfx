@@ -36,3 +36,11 @@ struct ModelRenderer {
 
 // Tag: made while running (spawned enemies and the like), so saving a scene skips it.
 struct Transient {};
+
+// A view into the scene. Where it is and where it looks come from the entity's Transform: its position and
+// its local -Z axis. Roll is not used: the view always keeps the world up direction up.
+struct Camera {
+    float fov = 45.0f;        // vertical field of view in degrees. Smaller = zoomed in
+    float nearPlane = 0.1f;   // closer than this is not drawn
+    float farPlane = 100.0f;  // farther than this is not drawn
+};

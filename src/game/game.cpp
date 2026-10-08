@@ -87,7 +87,7 @@ void Game::updateWorld(Scene& scene) {
     spawnProps(scene, props, terrain, playerStart, *cubeMesh, *enemyMesh);
 }
 
-void Game::update(Scene& scene, Camera& camera, const Input& input, Audio& audio, float dt) {
+void Game::update(Scene& scene, const Input& input, Audio& audio, float dt) {
     // The player can be deleted from the editor UI.
     if (!scene.registry.valid(player) || !scene.registry.all_of<Player, Health>(player))
         return;
@@ -103,13 +103,19 @@ void Game::update(Scene& scene, Camera& camera, const Input& input, Audio& audio
     Transform& transform = scene.registry.get<Transform>(player);
     Player& p = scene.registry.get<Player>(player);
 
-    const float sensitivity = 0.1f; // degrees per pixel
-    cameraYaw += input.look.x * sensitivity;
-    cameraPitch = std::clamp(cameraPitch - input.look.y * sensitivity, -70.0f, 20.0f);
-    cameraDistance = std::clamp(cameraDistance - input.scroll * 0.5f, 2.0f, 12.0f);
+    // The scene's camera entity follows the player when it has OrbitCamera settings. Without them the camera
+    // stays where it is, and the player still moves.
+    const entt::entity cameraEntity = scene.camera();
+    OrbitCamera* orbit = cameraEntity != entt::null ? scene.registry.try_get<OrbitCamera>(cameraEntity) : nullptr;
+
+    if (orbit) {
+        orbit->yaw += input.look.x * orbit->sensitivity;
+        orbit->pitch = std::clamp(orbit->pitch - input.look.y * orbit->sensitivity, orbit->minPitch, orbit->maxPitch);
+        orbit->distance = std::clamp(orbit->distance - input.scroll * 0.5f, orbit->minDistance, orbit->maxDistance);
+    }
 
     // WASD relative to where the camera looks, flattened onto the ground.
-    const float yaw = glm::radians(cameraYaw);
+    const float yaw = glm::radians(orbit ? orbit->yaw : -90.0f);
     const glm::vec3 forward(std::cos(yaw), 0.0f, std::sin(yaw));
     const glm::vec3 right(-forward.z, 0.0f, forward.x);
     glm::vec3 move(0.0f);
@@ -158,12 +164,18 @@ void Game::update(Scene& scene, Camera& camera, const Input& input, Audio& audio
         p.grounded = false;
     }
 
-    // Orbit: look at a point above the feet from `cameraDistance` behind it, never below the ground.
-    camera.yaw = cameraYaw;
-    camera.pitch = cameraPitch;
-    const glm::vec3 target = transform.position + glm::vec3(0.0f, 1.0f, 0.0f);
-    camera.position = target - camera.front() * cameraDistance;
-    camera.position.y = std::max(camera.position.y, heightAt(terrain, camera.position.x, camera.position.z) + 0.2f);
+    // Orbit: look at a point above the feet from `distance` behind it, never below the ground.
+    if (orbit) {
+        const float y = glm::radians(orbit->yaw);
+        const float pitch = glm::radians(orbit->pitch);
+        const glm::vec3 front(std::cos(y) * std::cos(pitch), std::sin(pitch), std::sin(y) * std::cos(pitch));
+        const glm::vec3 target = transform.position + glm::vec3(0.0f, orbit->height, 0.0f);
+
+        Transform& cameraTransform = scene.registry.get<Transform>(cameraEntity);
+        cameraTransform.position = target - front * orbit->distance;
+        cameraTransform.position.y = std::max(cameraTransform.position.y, heightAt(terrain, cameraTransform.position.x, cameraTransform.position.z) + 0.2f);
+        cameraTransform.rotation = aimRotation(front);
+    }
 
     const float healthBefore = scene.registry.get<Health>(player).current;
     updateEnemies(scene, dt);

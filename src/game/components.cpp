@@ -19,6 +19,7 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Spawner, interval, minInterval, 
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Weapon, damage, interval, range, projectileSpeed)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Orbit, blades, radius, speed, damage, hitInterval, knockback)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Props, rocks, trees, clearRadius)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(OrbitCamera, distance, minDistance, maxDistance, height, sensitivity, minPitch, maxPitch)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Terrain,size, resolution, base, amplitude, frequency, octaves, seed, color)
 
 // A tag has nothing to save.
@@ -36,6 +37,16 @@ void registerGameComponents(ComponentRegistry& components) {
 
     components.add<FollowCamera>("Follow camera", [](FollowCamera&) {
         ImGui::TextDisabled("Follows the camera");
+    });
+
+    components.add<OrbitCamera>("Orbit camera", [](OrbitCamera& orbit) {
+        ImGui::DragFloat("Distance", &orbit.distance, 0.1f, orbit.minDistance, orbit.maxDistance);
+        ImGui::DragFloat("Min distance", &orbit.minDistance, 0.1f, 0.1f, orbit.maxDistance);
+        ImGui::DragFloat("Max distance", &orbit.maxDistance, 0.1f, orbit.minDistance, 100.0f);
+        ImGui::DragFloat("Height", &orbit.height, 0.05f, -5.0f, 20.0f);
+        ImGui::DragFloat("Sensitivity", &orbit.sensitivity, 0.005f, 0.0f, 2.0f, "%.3f deg/px");
+        ImGui::DragFloat("Min pitch", &orbit.minPitch, 0.5f, -89.0f, orbit.maxPitch, "%.0f deg");
+        ImGui::DragFloat("Max pitch", &orbit.maxPitch, 0.5f, orbit.minPitch, 89.0f, "%.0f deg");
     });
 
     components.add<Player>("Player", [](Player& player) {

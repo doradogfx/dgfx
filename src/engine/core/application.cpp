@@ -98,7 +98,7 @@ void Application::run() {
 #endif
         gameUI();
 
-        renderer.render(scene, camera, size.x, size.y);
+        renderer.render(scene, size.x, size.y);
         endUI();
 
         glfwSwapBuffers(handle);

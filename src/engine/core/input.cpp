@@ -76,29 +76,38 @@ void Input::update() {
     wheel = 0.0;
 }
 
-void flyCamera(Camera& camera, const Input& input, float dt) {
+void flyCamera(Scene& scene, const Input& input, float dt) {
+    const entt::entity entity = scene.camera();
+
+    if (entity == entt::null)
+        return;
+
+    Transform& transform = scene.registry.get<Transform>(entity);
+
+    // Rotation y turns left for positive angles, x looks up. Pitch stops short of straight up/down: at 90 degrees
+    // the view direction would be parallel to world up, and the view flips.
     const float sensitivity = 0.1f; // degrees per pixel
-    camera.turn(input.look.x * sensitivity, -input.look.y * sensitivity);
-    camera.zoom(input.scroll * 2.0f); // 2 degrees of field of view per wheel notch
+    transform.rotation.y -= input.look.x * sensitivity;
+    transform.rotation.x = glm::clamp(transform.rotation.x - input.look.y * sensitivity, -89.0f, 89.0f);
 
     float speed = 2.5f * dt; // units per second
 
     if (input.down(GLFW_KEY_LEFT_SHIFT))
         speed *= 4.0f;
 
-    const glm::vec3 front = camera.front();
-    const glm::vec3 right = camera.right();
+    const glm::vec3 front = scene.forward(entity);
+    const glm::vec3 right = glm::normalize(glm::cross(front, kWorldUp));
 
     if (input.down(GLFW_KEY_W))
-        camera.position += front * speed;
+        transform.position += front * speed;
     if (input.down(GLFW_KEY_S))
-        camera.position -= front * speed;
+        transform.position -= front * speed;
     if (input.down(GLFW_KEY_D))
-        camera.position += right * speed;
+        transform.position += right * speed;
     if (input.down(GLFW_KEY_A))
-        camera.position -= right * speed;
+        transform.position -= right * speed;
     if (input.down(GLFW_KEY_SPACE))
-        camera.position += Camera::worldUp * speed;
+        transform.position += kWorldUp * speed;
     if (input.down(GLFW_KEY_LEFT_CONTROL))
-        camera.position -= Camera::worldUp * speed;
+        transform.position -= kWorldUp * speed;
 }

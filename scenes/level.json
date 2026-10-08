@@ -181,6 +181,40 @@
           0.67614245
         ]
       }
+    },
+    {
+      "Camera": {
+        "farPlane": 100.0,
+        "fov": 45.0,
+        "nearPlane": 0.1
+      },
+      "Orbit camera": {
+        "distance": 6.0,
+        "height": 1.0,
+        "maxDistance": 12.0,
+        "maxPitch": 20.0,
+        "minDistance": 2.0,
+        "minPitch": -70.0,
+        "sensitivity": 0.1
+      },
+      "name": "Camera",
+      "transform": {
+        "position": [
+          0.0,
+          2.0,
+          6.0
+        ],
+        "rotation": [
+          -15.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
     }
   ],
   "sky": "skybox/"

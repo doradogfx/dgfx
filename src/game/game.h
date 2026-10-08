@@ -2,7 +2,6 @@
 
 #include "assets/assets.h"
 #include "audio/audio.h"
-#include "core/camera.h"
 #include "core/input.h"
 #include "renderer/material.h"
 #include "scene/component_registry.h"
@@ -58,10 +57,24 @@ struct Spawner {
     float bossHealth = 1500.0f;
 };
 
+// Third-person camera around the player. Put it on the scene's camera entity: the game writes that entity's
+// Transform every frame while playing. Yaw -90 looks down -Z, negative pitch looks down.
+struct OrbitCamera {
+    float distance = 6.0f; // from the target point
+    float minDistance = 2.0f;
+    float maxDistance = 12.0f;
+    float height = 1.0f;       // the point above the player's feet that the camera looks at
+    float sensitivity = 0.1f;  // degrees per pixel of mouse movement
+    float minPitch = -70.0f;
+    float maxPitch = 20.0f;
+    float yaw = -90.0f;  // where the camera is now. Not saved.
+    float pitch = -20.0f; // not saved
+};
+
 struct Game {
     Game(Scene& scene, Assets& assets); // for a scene loaded from level.json: finds the player entity
 
-    void update(Scene& scene, Camera& camera, const Input& input, Audio& audio, float dt);
+    void update(Scene& scene, const Input& input, Audio& audio, float dt);
 
     entt::entity player;
     int kills = 0;
@@ -76,11 +89,6 @@ struct Game {
 
     // Applies one of the 3 choices and closes that level-up.
     void choose(Scene& scene, int index);
-
-    // Orbit camera, in the Camera's conventions (yaw -90 looks down -Z, negative pitch looks down).
-    float cameraYaw = -90.0f;
-    float cameraPitch = -20.0f;
-    float cameraDistance = 6.0f;
 
 private:
     void updateEnemies(Scene& scene, float dt);

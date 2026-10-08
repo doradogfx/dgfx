@@ -53,3 +53,8 @@ void Scene::destroy(entt::entity entity) {
 
     registry.destroy(doomed.begin(), doomed.end());
 }
+
+entt::entity Scene::camera() const {
+    auto view = registry.view<const Camera>();
+    return view.empty() ? entt::null : view.front();
+}

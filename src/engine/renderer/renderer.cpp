@@ -4,6 +4,7 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 
+#include <cstdio>
 #include <vector>
 
 static std::string shaderPath(const char* file) {
@@ -47,7 +48,7 @@ static glm::mat4 modelMatrix(const Scene& scene, entt::entity entity, const Mode
 static glm::mat4 sunLightSpace(glm::vec3 direction, glm::vec3 center, float radius) {
     const glm::vec3 dir = glm::normalize(direction);
     // lookAt can't build a view when "up" is parallel to the view direction, i.e. a sun straight overhead.
-    const glm::vec3 up = std::abs(dir.y) > 0.99f ? glm::vec3(0.0f, 0.0f, 1.0f) : Camera::worldUp;
+    const glm::vec3 up = std::abs(dir.y) > 0.99f ? glm::vec3(0.0f, 0.0f, 1.0f) : kWorldUp;
     const glm::mat4 view = glm::lookAt(center - dir * radius, center, up);
     const glm::mat4 projection = glm::ortho(-radius, radius, -radius, radius, 0.0f, 2.0f * radius);
     return projection * view;
@@ -123,10 +124,29 @@ void Renderer::drawBatch(const Batch& batch) {
     instances += static_cast<int>(batch.models.size());
 }
 
-void Renderer::render(Scene& scene, const Camera& camera, int width, int height) {
+void Renderer::render(Scene& scene, int width, int height) {
     entt::registry& registry = scene.registry;
     drawCalls = 0;
     instances = 0;
+
+    const entt::entity cameraEntity = scene.camera();
+
+    if (cameraEntity == entt::null) {
+        static bool reported = false;
+
+        if (!reported)
+            std::fprintf(stderr, "The scene has no Camera entity, nothing is drawn\n");
+
+        reported = true;
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glViewport(0, 0, width, height);
+        glClearColor(0.01f, 0.01f, 0.01f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        return;
+    }
+
+    const Camera& camera = registry.get<Camera>(cameraEntity);
+    const glm::vec3 cameraPosition = scene.position(cameraEntity);
 
     // Gather the lights from their entities. The shader takes one sun, up to kMaxPointLights point lights
     // and one spot; extra ones are ignored. A missing light is sent disabled.
@@ -204,13 +224,13 @@ void Renderer::render(Scene& scene, const Camera& camera, int width, int height)
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // A Vulkan backend would need a different projection here: depth range 0..1 instead of -1..1, and Y flipped.
-    const glm::mat4 projection = glm::perspective(glm::radians(camera.fov), static_cast<float>(width) / height, 0.1f, 100.0f);
-    const glm::mat4 view = camera.view();
+    const glm::mat4 projection = glm::perspective(glm::radians(camera.fov), static_cast<float>(width) / height, camera.nearPlane, camera.farPlane);
+    const glm::mat4 view = glm::lookAt(cameraPosition, cameraPosition + scene.forward(cameraEntity), kWorldUp);
 
     lit.use();
     lit.setMat4("projection", projection);
     lit.setMat4("view", view);
-    lit.setVec3("viewPos", camera.position);
+    lit.setVec3("viewPos", cameraPosition);
     lit.setBool("blinn", blinn);
     setLights(lit, sun, points, spot);
 

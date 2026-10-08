@@ -716,6 +716,31 @@
           1.0
         ]
       }
+    },
+    {
+      "Camera": {
+        "farPlane": 100.0,
+        "fov": 45.0,
+        "nearPlane": 0.1
+      },
+      "name": "Camera",
+      "transform": {
+        "position": [
+          0.0,
+          2.0,
+          6.0
+        ],
+        "rotation": [
+          -15.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
     }
   ],
   "sky": "skybox/"

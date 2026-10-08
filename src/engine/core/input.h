@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/camera.h"
+#include "scene/scene.h"
 
 #include <glm/glm.hpp>
 
@@ -44,5 +44,4 @@ private:
     double wheel = 0.0; // accumulated by the scroll callback, consumed by update()
 };
 
-// Free-flying debug camera: mouse look, WASD, Space/Ctrl up/down, Shift faster, scroll zoom.
-void flyCamera(Camera& camera, const Input& input, float dt);
+void flyCamera(Scene& scene, const Input& input, float dt);
