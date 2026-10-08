@@ -8,6 +8,7 @@
 
 GameApp::GameApp() {
     registerGameComponents(components);
+    audio.setVolume(0.3f); // the effects are loud next to other games
     openScene("level.json");
     screen = Screen::Menu;
 }

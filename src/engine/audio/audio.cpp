@@ -79,3 +79,8 @@ void Audio::play(const std::string& file, float volume, float minGap) {
     ma_sound_group_set_volume(&sound.group, volume);
     ma_engine_play_sound(&impl->engine, path.c_str(), &sound.group); // miniaudio frees the copy when it ends
 }
+
+void Audio::setVolume(float volume) {
+    if (impl->ready)
+        ma_engine_set_volume(&impl->engine, volume);
+}

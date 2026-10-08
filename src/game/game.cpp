@@ -262,7 +262,7 @@ void Game::updateEnemies(Scene& scene, float dt) {
 
         const Enemy stats{.speed = std::min(spawner.maxEnemySpeed, spawner.enemySpeed * std::sqrt(difficulty)),
                           .damage = spawner.enemyDamage};
-        spawn(spawner, "Enemy", kEnemyScale, stats, spawner.enemyHealth * difficulty, enemyMaterial);
+        spawn(spawner, "Enemy", kEnemyScale, stats, spawner.enemyHealth * std::sqrt(difficulty), enemyMaterial);
     }
 
     // The enemies follow the player.
@@ -273,6 +273,12 @@ void Game::updateEnemies(Scene& scene, float dt) {
 
         if (distance > 0.001f)
             transform.position += toPlayer / distance * std::min(enemy.speed * dt, distance);
+
+        // A knockback moves the enemy a part of the remaining push each frame: fast at first, then slower.
+        // About 0.3 seconds for most of it.
+        const glm::vec3 push = enemy.knockback * std::min(1.0f, 10.0f * dt);
+        transform.position += push;
+        enemy.knockback -= push;
     }
 
     resolveEnemyCollisions(scene, playerPos, kPlayerRadius, kArenaHalfSize);
@@ -283,13 +289,22 @@ void Game::updateEnemies(Scene& scene, float dt) {
 
     // An enemy that touches the player removes health. The collision step moves it out to exactly the sum of
     // the two radii, so the test adds a small margin.
+    // Many touching enemies hurt more than one, but not N times more: the strongest one's damage times the
+    // square root of the count (1 enemy x1, 4 enemies x2, 9 enemies x3).
+    int touching = 0;
+    float strongest = 0.0f;
+
     for (auto [entity, transform, enemy] : registry.view<Transform, Enemy>().each()) {
         glm::vec3 toPlayer = playerPos - transform.position;
         toPlayer.y = 0.0f;
 
-        if (glm::length(toPlayer) < enemy.radius + kPlayerRadius + 0.1f)
-            health.current -= enemy.damage * dt;
+        if (glm::length(toPlayer) < enemy.radius + kPlayerRadius + 0.1f) {
+            touching++;
+            strongest = std::max(strongest, enemy.damage);
+        }
     }
+
+    health.current -= strongest * std::sqrt(static_cast<float>(touching)) * dt;
 
     // The run ends at 0 health. GameApp shows the game over screen.
     if (health.current <= 0.0f) {

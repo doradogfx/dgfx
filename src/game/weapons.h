@@ -30,10 +30,11 @@ struct Projectile {
 // With 0 blades, the weapon is off. A level-up upgrade adds blades.
 struct Orbit {
     int blades = 0;
-    float radius = 1.2f;      // distance from the player. Enemies stop 0.8 away, so the blades must reach them there.
+    float radius = 2.0f;      // distance from the player. Larger than the touching distance (0.8), to hit enemies before they touch.
     float speed = 180.0f;     // degrees per second
     float damage = 8.0f;      // health that one touch removes
     float hitInterval = 0.5f; // seconds before the same enemy can take damage again
+    float knockback = 1.0f;   // a hit pushes the enemy this far away from the player
     float angle = 0.0f;       // where the first blade is now. Not saved.
 };
 

@@ -37,10 +37,12 @@ struct Enemy {
     float xpValue = 1.0f; // XP in the orb that this enemy drops
     float flash = 0.0f;   // seconds of white left after a hit. Not saved.
     float orbitTimer = 0.0f; // seconds before the orbit blades can hurt it again. Not saved.
+    glm::vec3 knockback{0.0f}; // push still to apply, spread over a few frames. Not saved.
 };
 
-// Spawns enemies on a ring around the player. The difficulty d = 1 + ramp * minutes divides the interval and
-// multiplies the enemy health and speed. At bossTime, one boss comes. Kill it to win.
+// Spawns enemies on a ring around the player. The difficulty d = 1 + ramp * minutes divides the spawn interval,
+// and sqrt(d) multiplies the enemy health and speed. With health times d, the kills needed each second would grow
+// with d*d, faster than the upgrades. At bossTime, one boss comes. Kill it to win.
 struct Spawner {
     float interval = 1.0f;    // seconds between spawns at the start
     float minInterval = 0.15f;
@@ -52,7 +54,7 @@ struct Spawner {
     float enemySpeed = 3.0f;   // at the start, multiplied by sqrt(d)
     float maxEnemySpeed = 4.5f;
     float enemyDamage = 15.0f; // per second of contact
-    float bossTime = 300.0f;   // seconds
+    float bossTime = 180.0f;   // seconds
     float bossHealth = 1500.0f;
 };
 
@@ -96,7 +98,7 @@ private:
     const Mesh* enemyMesh = nullptr; // the sphere
     const Mesh* cubeMesh = nullptr;
     bool bossSpawned = false;
-    std::mt19937 rng{1};
+    std::mt19937 rng{std::random_device{}()}; // a new seed each run: spawns and upgrade choices differ
     Material enemyMaterial{nullptr, nullptr, glm::vec3(0.6f, 0.02f, 0.02f), glm::vec3(0.3f), 32.0f}; // linear red plastic
     Material bossMaterial{nullptr, nullptr, glm::vec3(0.15f, 0.0f, 0.2f), glm::vec3(0.5f), 64.0f}; // dark purple
     Material flashMaterial = plastic({1.0f, 1.0f, 1.0f}, 32.0f); // an enemy that was just hit

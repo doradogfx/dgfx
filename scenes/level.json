@@ -92,7 +92,8 @@
         "blades": 0,
         "damage": 8.0,
         "hitInterval": 0.5,
-        "radius": 1.2,
+        "knockback": 1.0,
+        "radius": 2.0,
         "speed": 180.0
       },
       "Player": {
@@ -127,7 +128,7 @@
     {
       "Spawner": {
         "bossHealth": 1500.0,
-        "bossTime": 300.0,
+        "bossTime": 180.0,
         "enemyDamage": 15.0,
         "enemyHealth": 20.0,
         "enemySpeed": 3.0,

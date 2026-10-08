@@ -14,6 +14,9 @@ public:
     // minGap seconds after the last one is skipped, so many hits in one frame do not make many copies.
     void play(const std::string& file, float volume = 1.0f, float minGap = 0.0f);
 
+    // The volume of all sounds, from 0 (silent) to 1.
+    void setVolume(float volume);
+
     Audio(const Audio&) = delete;
     Audio& operator=(const Audio&) = delete;
 

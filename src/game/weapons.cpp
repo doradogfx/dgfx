@@ -154,6 +154,14 @@ int updateOrbit(Scene& scene, entt::entity player, const Mesh& mesh, const Mater
                 health.current -= orbit->damage;
                 enemy.flash = kHitFlashTime;
                 enemy.orbitTimer = orbit->hitInterval;
+
+                // Push the enemy away from the player, so the blades keep it out of touching distance.
+                glm::vec3 away = transform.position - center;
+                away.y = 0.0f;
+
+                if (glm::length(away) > 0.0001f)
+                    enemy.knockback = glm::normalize(away) * orbit->knockback; // the enemy moves it over a few frames
+
                 hits++;
                 break;
             }
