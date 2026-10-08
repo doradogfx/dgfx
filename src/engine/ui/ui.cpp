@@ -75,7 +75,7 @@ static void statsOverlay(const UiContext& context, float margin) {
 
     if (ImGui::Begin("Stats", &panels.stats, flags)) {
         ImGui::Text("%.1f FPS (%.2f ms)", io.Framerate, 1000.0f / io.Framerate);
-        ImGui::Text("%zu entities, %d lit draws", static_cast<size_t>(context.scene.registry.view<const Name>().size()), context.renderer.drawCalls);
+        ImGui::Text("%zu entities, %d objects in %d draws", static_cast<size_t>(context.scene.registry.view<const Name>().size()), context.renderer.instances, context.renderer.drawCalls);
 
         if (context.statsExtra)
             context.statsExtra();

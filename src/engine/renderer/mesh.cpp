@@ -51,6 +51,11 @@ void Mesh::draw() const {
     glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, nullptr);
 }
 
+void Mesh::drawInstanced(GLsizei count, GLuint firstInstance) const {
+    glBindVertexArray(vao);
+    glDrawElementsInstancedBaseInstance(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, nullptr, count, firstInstance);
+}
+
 Mesh makeCube() {
     // The normal points straight out of the face. Corners can't be shared between faces because each face
     // needs its own normal, so 4 vertices per face.

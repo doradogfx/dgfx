@@ -26,6 +26,7 @@ A simplified 3D survivors-like built on the engine.
 - **OpenGL 4.6 core** on a GLFW window, with vsync and resize/minimize handling.
 - **Shaders** loaded from files, compiled and linked, with error reporting and typed uniform setters.
 - **Meshes** that own their GPU buffers (VAO/VBO/EBO), with procedural cube and UV sphere generation.
+- **Instanced drawing**: objects with the same mesh and material are drawn with one call. The model matrices of all objects go to the GPU once per frame in a shader storage buffer, which the vertex shader reads with `gl_BaseInstance + gl_InstanceID`. The shadow pass uses the same buffer.
 - **Textures** loaded with stb_image (PNG/JPG), sRGB or linear, mipmapped with anisotropic filtering, bound to multiple texture units.
 - **3D transforms**: model/view/projection matrices, perspective projection, depth testing, back-face culling.
 - **Lighting**: Blinn-Phong, computed in linear space (sRGB textures and framebuffer, so it is gamma-correct).

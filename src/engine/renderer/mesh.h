@@ -18,6 +18,10 @@ public:
 
     void draw() const;
 
+    // Draws count copies with one call. The shader reads the data of each copy from the instance buffer at
+    // gl_BaseInstance + gl_InstanceID, so firstInstance is where this batch starts in that buffer.
+    void drawInstanced(GLsizei count, GLuint firstInstance) const;
+
     // Stop meshes from being copied, as they would share (and double-delete) the same GL buffers
     Mesh(const Mesh&) = delete;
     Mesh& operator=(const Mesh&) = delete;

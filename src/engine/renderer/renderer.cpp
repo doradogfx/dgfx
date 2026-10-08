@@ -18,12 +18,14 @@ Renderer::Renderer(int width, int height)
     // The post pass's full-screen triangle comes from gl_VertexID alone, but core profile still requires
     // a VAO to be bound for any draw, so an empty one.
     glGenVertexArrays(1, &emptyVao);
+    glCreateBuffers(1, &instanceBuffer);
 
     // Filter across cubemap face edges, otherwise seams show along the sky cube's edges.
     glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 }
 
 Renderer::~Renderer() {
+    glDeleteBuffers(1, &instanceBuffer);
     glDeleteVertexArrays(1, &emptyVao);
 }
 
@@ -55,15 +57,49 @@ static void setCulling(bool enabled, GLenum face) {
     glCullFace(face);
 }
 
-// One mesh with the lit shader, which must already be in use with the per-frame uniforms set.
-void Renderer::drawLit(const Mesh& mesh, const Material& material, const glm::mat4& model) {
-    // Normals can't just use the model matrix: a non-uniform scale (like the flattened floor) would
-    // tilt them so they no longer point straight out of the surface. The inverse transpose undoes the
-    // scale's effect on direction while keeping rotation. mat3 drops translation, directions don't move.
-    const glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(model)));
+// Groups the objects by mesh and material, then puts the data of all copies into instanceData, batch after batch.
+void Renderer::buildBatches(const Scene& scene) {
+    batches.clear();
 
-    lit.setMat4("model", model);
-    lit.setMat3("normalMatrix", normalMatrix);
+    // ponytail: a linear search for the batch of each object. Fine for a few batches, use a hash map for many.
+    auto add = [this](const Mesh* mesh, const Material& material, const glm::mat4& model) {
+        for (Batch& batch : batches) {
+            if (batch.mesh == mesh && batch.material == material) {
+                batch.models.push_back(model);
+                return;
+            }
+        }
+
+        batches.push_back({mesh, material, 0, {model}});
+    };
+
+    for (auto [entity, meshRenderer] : scene.registry.view<const MeshRenderer>().each())
+        add(meshRenderer.mesh, meshRenderer.material, scene.worldMatrix(entity));
+
+    for (auto [entity, modelRenderer] : scene.registry.view<const ModelRenderer>().each()) {
+        const glm::mat4 model = modelMatrix(scene, entity, *modelRenderer.model);
+
+        for (const Model::Part& part : modelRenderer.model->parts)
+            add(&part.mesh, part.material, model);
+    }
+
+    instanceData.clear();
+
+    for (Batch& batch : batches) {
+        batch.first = static_cast<GLuint>(instanceData.size());
+
+        // Normals can't just use the model matrix: a non-uniform scale (like a flat rock) would tilt them so
+        // they no longer point straight out of the surface. The inverse transpose undoes the scale's effect on
+        // direction while keeping rotation. mat3 drops translation, directions don't move.
+        for (const glm::mat4& model : batch.models)
+            instanceData.push_back({model, glm::mat4(glm::transpose(glm::inverse(glm::mat3(model))))});
+    }
+}
+
+// One batch with the lit shader, which must already be in use with the per-frame uniforms set.
+void Renderer::drawBatch(const Batch& batch) {
+    const Material& material = batch.material;
+
     // Maps go to the units the shader's samplers read (layout binding 0 and 1).
     (material.diffuseMap ? material.diffuseMap : &white)->bind(0);
     (material.specularMap ? material.specularMap : &white)->bind(1);
@@ -75,13 +111,15 @@ void Renderer::drawLit(const Mesh& mesh, const Material& material, const glm::ma
     lit.setFloat("material.ior", material.ior);
 
     setCulling(faceCulling && !material.doubleSided, GL_BACK);
-    mesh.draw();
+    batch.mesh->drawInstanced(static_cast<GLsizei>(batch.models.size()), batch.first);
     drawCalls++;
+    instances += static_cast<int>(batch.models.size());
 }
 
 void Renderer::render(Scene& scene, const Camera& camera, int width, int height) {
     entt::registry& registry = scene.registry;
     drawCalls = 0;
+    instances = 0;
 
     // Gather the lights from their entities. The shader takes one sun, up to kMaxPointLights point lights
     // and one spot; extra ones are ignored. A missing light is sent disabled.
@@ -116,6 +154,19 @@ void Renderer::render(Scene& scene, const Camera& camera, int width, int height)
     const glm::mat4 lightSpace = sunLightSpace(sun.direction, shadowCenter);
     const bool castShadows = shadows && sun.light.enabled;
 
+    // The data of every copy goes to the GPU once, in one buffer that both passes read. The point light lamps
+    // come last, one copy each.
+    buildBatches(scene);
+    const GLuint firstLamp = static_cast<GLuint>(instanceData.size());
+
+    for (const WorldPointLight& p : points) {
+        const glm::mat4 model = glm::scale(glm::translate(glm::mat4(1.0f), p.position), glm::vec3(0.15f));
+        instanceData.push_back({model, glm::mat4(1.0f)});
+    }
+
+    glNamedBufferData(instanceBuffer, static_cast<GLsizeiptr>(instanceData.size() * sizeof(Instance)), instanceData.data(), GL_STREAM_DRAW);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, instanceBuffer);
+
     // Shadow pass: the scene's depth as the sun sees it. Lamps don't cast shadows.
     if (castShadows) {
         shadowMap.resize(shadowResolution);
@@ -128,19 +179,10 @@ void Renderer::render(Scene& scene, const Camera& camera, int width, int height)
         depth.use();
         depth.setMat4("lightSpace", lightSpace);
 
-        for (auto [entity, meshRenderer] : registry.view<MeshRenderer>().each()) {
-            depth.setMat4("model", scene.worldMatrix(entity));
-            meshRenderer.mesh->draw();
-        }
-
-        for (auto [entity, modelRenderer] : registry.view<ModelRenderer>().each()) {
-            depth.setMat4("model", modelMatrix(scene, entity, *modelRenderer.model));
-
-            for (const Model::Part& part : modelRenderer.model->parts) {
-                // Thin double-sided surfaces must cast shadows whichever side faces the sun.
-                setCulling((faceCulling || shadowCullFront) && !part.material.doubleSided, shadowCullFront ? GL_FRONT : GL_BACK);
-                part.mesh.draw();
-            }
+        for (const Batch& batch : batches) {
+            // Thin double-sided surfaces must cast shadows whichever side faces the sun.
+            setCulling((faceCulling || shadowCullFront) && !batch.material.doubleSided, shadowCullFront ? GL_FRONT : GL_BACK);
+            batch.mesh->drawInstanced(static_cast<GLsizei>(batch.models.size()), batch.first);
         }
     }
 
@@ -180,15 +222,8 @@ void Renderer::render(Scene& scene, const Camera& camera, int width, int height)
     if (scene.sky)
         scene.sky->bind(3);
 
-    for (auto [entity, meshRenderer] : registry.view<MeshRenderer>().each())
-        drawLit(*meshRenderer.mesh, meshRenderer.material, scene.worldMatrix(entity));
-
-    for (auto [entity, modelRenderer] : registry.view<ModelRenderer>().each()) {
-        const glm::mat4 model = modelMatrix(scene, entity, *modelRenderer.model);
-
-        for (const Model::Part& part : modelRenderer.model->parts)
-            drawLit(part.mesh, part.material, model);
-    }
+    for (const Batch& batch : batches)
+        drawBatch(batch);
 
     setCulling(faceCulling, GL_BACK);
 
@@ -197,11 +232,11 @@ void Renderer::render(Scene& scene, const Camera& camera, int width, int height)
     lamp.setMat4("projection", projection);
     lamp.setMat4("view", view);
 
-    for (const WorldPointLight& p : points) {
-        lamp.setMat4("model", glm::scale(glm::translate(glm::mat4(1.0f), p.position), glm::vec3(0.15f)));
-        lamp.setVec3("lightColor", p.light.diffuse);
-        sphere.draw();
+    for (size_t i = 0; i < points.size(); i++) {
+        lamp.setVec3("lightColor", points[i].light.diffuse);
+        sphere.drawInstanced(1, firstLamp + static_cast<GLuint>(i));
         drawCalls++;
+        instances++;
     }
 
     // Sky last: its depth is 1.0, so the depth test skips every pixel an object already covered.

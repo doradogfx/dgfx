@@ -14,6 +14,8 @@ struct Material {
     float refractivity = 0.0f; // 0 = opaque, 1 = see-through glass
     float ior = 1.52f;         // index of refraction: air 1.0, water 1.33, glass ~1.52
     bool doubleSided = false;  // thin surfaces seen from both sides: drawn without back-face culling
+
+    bool operator==(const Material&) const = default; // the renderer draws equal materials in one batch
 };
 
 // Colors picked by eye are sRGB (gamma-encoded); lighting math needs linear values.
