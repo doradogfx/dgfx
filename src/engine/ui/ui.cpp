@@ -9,6 +9,7 @@
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 
+#include <algorithm>
 #include <string>
 
 void initUI(GLFWwindow* window) {
@@ -49,12 +50,15 @@ struct Panels {
 };
 
 static Panels panels;
+static bool resetLayout = false; // View > Reset layout, applied on the next frame
 
-// Position and size apply only the first time (afterwards imgui.ini remembers where the user put it).
+// Position and size apply the first time only (afterwards imgui.ini remembers where the user put them), or on
+// every frame where `place` is set: a reset of the layout, or a change of the window size.
 // Begin returns false while the window is collapsed, but End must be called either way.
-static bool beginPanel(const char* name, bool* open, ImVec2 pos, ImVec2 size) {
-    ImGui::SetNextWindowPos(pos, ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(size, ImGuiCond_FirstUseEver);
+static bool beginPanel(const char* name, bool* open, ImVec2 pos, ImVec2 size, bool place) {
+    const ImGuiCond cond = place ? ImGuiCond_Always : ImGuiCond_FirstUseEver;
+    ImGui::SetNextWindowPos(pos, cond);
+    ImGui::SetNextWindowSize(size, cond);
     const bool visible = ImGui::Begin(name, open);
 
     // Negative width = the panel's width minus this much, which leaves room for labels at any panel size.
@@ -67,14 +71,14 @@ static void endPanel() {
     ImGui::End();
 }
 
-// Small overlay without a title bar, pinned to the bottom-left corner.
-static void statsOverlay(const UiContext& context, float margin) {
+// Small overlay without a title bar, pinned to a bottom-left corner: `left` is its left edge.
+static void statsOverlay(const UiContext& context, float left, float margin) {
     const ImGuiIO& io = ImGui::GetIO();
     const ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize |
                                    ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings |
                                    ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
 
-    ImGui::SetNextWindowPos(ImVec2(margin, io.DisplaySize.y - margin), ImGuiCond_Always, ImVec2(0.0f, 1.0f));
+    ImGui::SetNextWindowPos(ImVec2(left, io.DisplaySize.y - margin), ImGuiCond_Always, ImVec2(0.0f, 1.0f));
     ImGui::SetNextWindowBgAlpha(0.4f);
 
     if (ImGui::Begin("Stats", &panels.stats, flags)) {
@@ -124,6 +128,11 @@ void debugUI(GLFWwindow* window, UiContext& context) {
             ImGui::MenuItem("Renderer", nullptr, &panels.renderer);
             ImGui::MenuItem("Display", nullptr, &panels.display);
             ImGui::MenuItem("Stats", nullptr, &panels.stats);
+            ImGui::Separator();
+
+            if (ImGui::MenuItem("Reset layout"))
+                resetLayout = true;
+
             ImGui::EndMenu();
         }
 
@@ -140,42 +149,60 @@ void debugUI(GLFWwindow* window, UiContext& context) {
         ImGui::EndMainMenuBar();
     }
 
-    // Default layout: scene panels on the left, settings on the right, below the menu bar.
+    // The layout: a column on each side that fills the height below the menu bar, and the game view between them.
+    // Left: the scene (hierarchy over inspector). Right: the settings (renderer over display).
     const ImVec2 screen = ImGui::GetIO().DisplaySize;
     const float margin = 10.0f * uiScale();
     const float top = ImGui::GetFrameHeight() + margin;
-    const float width = 340.0f * uiScale();
-    const float hierarchyHeight = screen.y * 0.35f;
+    const float height = std::max(screen.y - top - margin, 2.0f * margin); // of a full column
+    const float width = std::min(340.0f * uiScale(), screen.x * 0.3f);
     const float right = screen.x - width - margin;
+    const float hierarchyHeight = (height - margin) * 0.45f;
+    const float rendererHeight = (height - margin) * 0.5f; // half the column; the display panel fits its content
+
+    // Place the panels again when the window size changes, so none of them stays off screen.
+    static ImVec2 lastScreen{0.0f, 0.0f};
+    const bool place = resetLayout || screen.x != lastScreen.x || screen.y != lastScreen.y;
+    const bool firstFrame = lastScreen.x == 0.0f;
+    lastScreen = screen;
+    resetLayout = false;
+
+    // On the first frame, imgui.ini keeps the user's own layout.
+    const bool placeNow = place && !firstFrame;
 
     if (panels.hierarchy) {
-        if (beginPanel("Hierarchy", &panels.hierarchy, ImVec2(margin, top), ImVec2(width, hierarchyHeight)))
+        if (beginPanel("Hierarchy", &panels.hierarchy, ImVec2(margin, top), ImVec2(width, hierarchyHeight), placeNow))
             hierarchyPanel(context);
 
         endPanel();
     }
 
     if (panels.inspector) {
-        if (beginPanel("Inspector", &panels.inspector, ImVec2(margin, top + hierarchyHeight + margin), ImVec2(width, screen.y * 0.4f)))
+        if (beginPanel("Inspector", &panels.inspector, ImVec2(margin, top + hierarchyHeight + margin),
+                       ImVec2(width, height - hierarchyHeight - margin), placeNow))
             inspectorPanel(context);
 
         endPanel();
     }
 
     if (panels.renderer) {
-        if (beginPanel("Renderer", &panels.renderer, ImVec2(right, top), ImVec2(width, 0.0f)))
+        if (beginPanel("Renderer", &panels.renderer, ImVec2(right, top), ImVec2(width, rendererHeight), placeNow))
             rendererPanel(context.renderer);
 
         endPanel();
     }
 
     if (panels.display) {
-        if (beginPanel("Display", &panels.display, ImVec2(right, screen.y * 0.65f), ImVec2(width, 0.0f)))
+        if (beginPanel("Display", &panels.display, ImVec2(right, top + rendererHeight + margin),
+                       ImVec2(width, 0.0f), placeNow)) // 0 height: ImGui sizes it to the content
             displayPanel(window);
 
         endPanel();
     }
 
-    if (panels.stats)
-        statsOverlay(context, margin);
+    // The stats go in the bottom-left corner of the game view, clear of the left column.
+    if (panels.stats) {
+        const bool leftColumn = panels.hierarchy || panels.inspector;
+        statsOverlay(context, leftColumn ? margin + width + margin : margin, margin);
+    }
 }

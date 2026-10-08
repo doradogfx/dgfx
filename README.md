@@ -77,7 +77,7 @@ The **File** menu has **Open scene** (it lists the files in `scenes/`), **Save s
 
 Scenes live in `scenes/` as JSON: `level.json` is the game level and `demo.json` is the engine demo. In UI mode (Tab):
 
-- **Hierarchy**: right-click an entity for Add child, Duplicate and Delete (deleting also removes its children). Right-click empty space for Add entity.
+- **Hierarchy**: right-click an entity for Add child, Duplicate and Delete (deleting also removes its children). Add an entity with **+ Add entity** (next to the selected one, or at the root), or with Add entity in either right-click menu. Search filters by name. Runtime entities (spawned while playing, not saved) are dimmed, and the Runtime toggle hides them.
 - **Inspector**: edit the name, transform and components. Use the X on a component to remove it, and "Add component" to add one.
 - **File → Save scene** writes the loaded scene file. Entities spawned while playing (enemies) are not saved.
 

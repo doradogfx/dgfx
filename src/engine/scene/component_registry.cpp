@@ -37,7 +37,7 @@ void ComponentRegistry::inspect(entt::registry& registry, entt::entity entity, A
 
     ImGui::Spacing();
 
-    if (ImGui::Button("Add component"))
+    if (ImGui::Button("Add component", ImVec2(-FLT_MIN, 0.0f))) // the full panel width
         ImGui::OpenPopup("add_component");
 
     if (ImGui::BeginPopup("add_component")) {
