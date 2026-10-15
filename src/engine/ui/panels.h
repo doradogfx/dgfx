@@ -1,12 +1,16 @@
 #pragma once
 
 struct GLFWwindow;
-struct UiContext;
+struct Scene;
+class Assets;
+class ComponentRegistry;
 class Renderer;
 
 // The contents of the debug UI's panels. Each draws inside a window that debugUI has already begun.
-void hierarchyPanel(UiContext& context); // the entity tree, and its right-click menus
-void inspectorPanel(UiContext& context); // the selected entity's name, transform and components
+// The entity tree, and its right-click menus.
+void hierarchyPanel(Scene& scene, Assets& assets, const ComponentRegistry& components);
+// The selected entity's name, transform and components.
+void inspectorPanel(Scene& scene, Assets& assets, const ComponentRegistry& components);
 void rendererPanel(Renderer& renderer);
 void displayPanel(GLFWwindow* window);
 

@@ -5,10 +5,10 @@
 #include "game/xp.h"
 
 #include <GLFW/glfw3.h>
+#include <imgui.h>
 
 #include <algorithm>
 #include <cmath>
-#include <stdexcept>
 #include <vector>
 
 static constexpr float kGravity = 20.0f;      // stronger than real gravity: snappier jumps
@@ -16,30 +16,62 @@ static constexpr float kArenaHalfSize = 19.0f; // inside the 40x40 terrain
 static constexpr float kPlayerRadius = 0.4f;
 static constexpr float kEnemyScale = 0.8f;
 
-Game::Game(Scene& scene, Assets& assets) {
+Game::Game() {
+    registerGameComponents(components);
+    audio.setVolume(0.3f); // the effects are loud next to other games
     enemyMesh = &assets.mesh("sphere");
     cubeMesh = &assets.mesh("cube");
+    openScene("level.json");
+    screen = Screen::Menu;
+}
 
-    bool found = false;
+void Game::sceneOpened() {
+    state = RunState{}; // after the load: the old scene's terrain entity pointed at the old terrain mesh
+    screen = Screen::Playing;
 
-    for (auto [entity, p] : scene.registry.view<Player>().each()) {
-        player = entity;
-        found = true;
+    // A scene with nothing to play, like the demo, is looked around with the fly camera.
+    flyMode = scene.registry.view<Player>().empty();
+
+    if (!flyMode)
+        startRun();
+}
+
+void Game::update(float dt) {
+    // No Player: the demo with F1 switched off. There is nothing to play.
+    if (state.player == entt::null)
+        return;
+
+    if (input.pressed(GLFW_KEY_ESCAPE) && screen == Screen::Playing)
+        screen = Screen::Paused;
+    else if (input.pressed(GLFW_KEY_ESCAPE) && screen == Screen::Paused)
+        screen = Screen::Playing;
+
+    if ((state.dead || state.won) && screen == Screen::Playing) {
+        screen = Screen::GameOver;
+        audio.play(state.won ? "win.wav" : "game_over.wav");
     }
 
-    if (!found)
-        throw std::runtime_error("The level has no Player entity");
+    if (screen == Screen::Playing)
+        simulate(dt);
+}
 
-    playerStart = scene.registry.get<Transform>(player).position;
+void Game::statsOverlay() {
+    ImGui::Text("%zu enemies", static_cast<size_t>(scene.registry.view<const Enemy>().size()));
+}
+
+// The first Player entity of the loaded scene.
+void Game::startRun() {
+    state.player = scene.registry.view<Player>().front();
+    state.playerStart = scene.registry.get<Transform>(state.player).position;
 
     // New hills and props each run. Perlin noise repeats every 256 units, so a larger seed gives no new hills.
     for (auto [entity, t] : scene.registry.view<Terrain>().each())
         t.seed = static_cast<int>(std::random_device{}() % 256);
 
-    updateWorld(scene);
+    updateWorld();
 }
 
-void Game::updateWorld(Scene& scene) {
+void Game::updateWorld() {
     entt::registry& registry = scene.registry;
     const Terrain* terrainSettings = nullptr;
     const Props* propSettings = nullptr;
@@ -51,30 +83,30 @@ void Game::updateWorld(Scene& scene) {
         propSettings = &p;
 
     // The editor can delete the mesh entity. Then make it again.
-    const bool meshMissing = !registry.valid(terrainMeshEntity);
-    const bool terrainChanged = terrainSettings && (!(*terrainSettings == terrain) || !terrainMesh || meshMissing);
+    const bool meshMissing = !registry.valid(state.terrainMeshEntity);
+    const bool terrainChanged = terrainSettings && (!(*terrainSettings == state.terrain) || !state.terrainMesh || meshMissing);
 
     if (terrainChanged) {
-        terrain = *terrainSettings;
-        terrainMesh = std::make_unique<Mesh>(makeTerrainMesh(terrain));
+        state.terrain = *terrainSettings;
+        state.terrainMesh = std::make_unique<Mesh>(makeTerrainMesh(state.terrain));
 
-        Material material = plastic(terrain.color, 8.0f);
+        Material material = plastic(state.terrain.color, 8.0f);
         material.specular = glm::vec3(0.1f);
 
         if (meshMissing) {
-            terrainMeshEntity = scene.create("Terrain mesh");
-            registry.emplace<Transient>(terrainMeshEntity);
+            state.terrainMeshEntity = scene.create("Terrain mesh");
+            registry.emplace<Transient>(state.terrainMeshEntity);
         }
 
-        registry.emplace_or_replace<MeshRenderer>(terrainMeshEntity, terrainMesh.get(), material);
+        registry.emplace_or_replace<MeshRenderer>(state.terrainMeshEntity, state.terrainMesh.get(), material);
     }
 
     // The props sit on the terrain, so they move with it too.
-    if (!propSettings || (!terrainChanged && propsMade && *propSettings == props))
+    if (!propSettings || (!terrainChanged && state.propsMade && *propSettings == state.props))
         return;
 
-    props = *propSettings;
-    propsMade = true;
+    state.props = *propSettings;
+    state.propsMade = true;
 
     std::vector<entt::entity> old;
 
@@ -84,24 +116,24 @@ void Game::updateWorld(Scene& scene) {
     for (entt::entity entity : old)
         scene.destroy(entity); // with the children: the trunk and the leaves of a tree
 
-    spawnProps(scene, props, terrain, playerStart, *cubeMesh, *enemyMesh);
+    spawnProps(scene, state.props, state.terrain, state.playerStart, *cubeMesh, *enemyMesh);
 }
 
-void Game::update(Scene& scene, const Input& input, Audio& audio, float dt) {
+void Game::simulate(float dt) {
     // The player can be deleted from the editor UI.
-    if (!scene.registry.valid(player) || !scene.registry.all_of<Player, Health>(player))
+    if (!scene.registry.valid(state.player) || !scene.registry.all_of<Player, Health>(state.player))
         return;
 
-    updateWorld(scene);
+    updateWorld();
 
     // Stopped when the run is over, and paused while a level-up waits for a choice.
-    if (dead || won || pendingLevelUps > 0)
+    if (state.dead || state.won || state.pendingLevelUps > 0)
         return;
 
-    elapsed += dt;
+    state.elapsed += dt;
 
-    Transform& transform = scene.registry.get<Transform>(player);
-    Player& p = scene.registry.get<Player>(player);
+    Transform& transform = scene.registry.get<Transform>(state.player);
+    Player& p = scene.registry.get<Player>(state.player);
 
     // The scene's camera entity follows the player when it has OrbitCamera settings. Without them the camera
     // stays where it is, and the player still moves.
@@ -154,7 +186,7 @@ void Game::update(Scene& scene, const Input& input, Audio& audio, float dt) {
 
     // Land on the ground. A grounded player also stays on it when walking down a slope, instead of a small fall
     // each frame.
-    const float ground = heightAt(terrain, transform.position.x, transform.position.z);
+    const float ground = heightAt(state.terrain, transform.position.x, transform.position.z);
 
     if (transform.position.y <= ground || (p.grounded && transform.position.y - ground < 0.3f)) {
         transform.position.y = ground;
@@ -173,22 +205,22 @@ void Game::update(Scene& scene, const Input& input, Audio& audio, float dt) {
 
         Transform& cameraTransform = scene.registry.get<Transform>(cameraEntity);
         cameraTransform.position = target - front * orbit->distance;
-        cameraTransform.position.y = std::max(cameraTransform.position.y, heightAt(terrain, cameraTransform.position.x, cameraTransform.position.z) + 0.2f);
+        cameraTransform.position.y = std::max(cameraTransform.position.y, heightAt(state.terrain, cameraTransform.position.x, cameraTransform.position.z) + 0.2f);
         cameraTransform.rotation = aimRotation(front);
     }
 
-    const float healthBefore = scene.registry.get<Health>(player).current;
-    updateEnemies(scene, dt);
+    const float healthBefore = scene.registry.get<Health>(state.player).current;
+    updateEnemies(dt);
 
     // Contact damage is a small amount each frame, so the sound has a long gap.
-    if (scene.registry.get<Health>(player).current < healthBefore)
+    if (scene.registry.get<Health>(state.player).current < healthBefore)
         audio.play("player_hurt.wav", 0.5f, 0.4f);
 
-    if (updateWeapon(scene, player, *enemyMesh, projectileMaterial, dt))
+    if (updateWeapon(scene, state.player, *enemyMesh, projectileMaterial, dt))
         audio.play("shoot.wav", 0.5f);
 
     // Before the projectiles: their death pass also removes the enemies that the blades kill.
-    const int bladeHits = updateOrbit(scene, player, *cubeMesh, bladeMaterial, dt);
+    const int bladeHits = updateOrbit(scene, state.player, *cubeMesh, bladeMaterial, dt);
     const ProjectileResult shots = updateProjectiles(scene, dt);
 
     if (shots.hits + bladeHits > 0)
@@ -199,24 +231,24 @@ void Game::update(Scene& scene, const Input& input, Audio& audio, float dt) {
     // A hit enemy is white for a short time, then it gets its own color again.
     for (auto [entity, enemy, renderer] : scene.registry.view<Enemy, MeshRenderer>().each()) {
         enemy.flash = std::max(0.0f, enemy.flash - dt);
-        renderer.material = enemy.flash > 0.0f ? flashMaterial : (entity == boss ? bossMaterial : enemyMaterial);
+        renderer.material = enemy.flash > 0.0f ? flashMaterial : (entity == state.boss ? bossMaterial : enemyMaterial);
     }
 
     // Each dead enemy that gives XP drops an orb on the floor where it died.
     for (const Death& death : shots.deaths) {
-        kills++;
+        state.kills++;
 
         if (death.xp > 0.0f)
-            spawnOrb(scene, *enemyMesh, orbMaterial, {death.position.x, heightAt(terrain, death.position.x, death.position.z) + 0.2f, death.position.z}, death.xp);
+            spawnOrb(scene, *enemyMesh, orbMaterial, {death.position.x, heightAt(state.terrain, death.position.x, death.position.z) + 0.2f, death.position.z}, death.xp);
     }
 
     // The run is won when the boss is dead. Its entity is then not valid.
-    if (bossSpawned && !scene.registry.valid(boss)) {
-        boss = entt::null;
-        won = true;
+    if (state.bossSpawned && !scene.registry.valid(state.boss)) {
+        state.boss = entt::null;
+        state.won = true;
     }
 
-    const OrbResult orbs = updateOrbs(scene, player, kPlayerRadius, dt);
+    const OrbResult orbs = updateOrbs(scene, state.player, kPlayerRadius, dt);
 
     if (orbs.taken > 0)
         audio.play("xp_pickup.wav", 0.5f, 0.05f);
@@ -224,17 +256,17 @@ void Game::update(Scene& scene, const Input& input, Audio& audio, float dt) {
     if (orbs.levels > 0) {
         audio.play("level_up.wav", 0.5f);
 
-        if (pendingLevelUps == 0)
+        if (state.pendingLevelUps == 0)
             rollChoices();
     }
 
-    pendingLevelUps += orbs.levels;
+    state.pendingLevelUps += orbs.levels;
 }
 
-void Game::updateEnemies(Scene& scene, float dt) {
+void Game::updateEnemies(float dt) {
     entt::registry& registry = scene.registry;
-    const glm::vec3 playerPos = registry.get<Transform>(player).position;
-    Health& health = registry.get<Health>(player);
+    const glm::vec3 playerPos = registry.get<Transform>(state.player).position;
+    Health& health = registry.get<Health>(state.player);
 
     // Creates an enemy at a random position on the spawner ring around the player.
     auto spawn = [&](const Spawner& spawner, const char* name, float scale, const Enemy& stats, float health,
@@ -243,7 +275,7 @@ void Game::updateEnemies(Scene& scene, float dt) {
         glm::vec3 position = playerPos + glm::vec3(std::cos(angle), 0.0f, std::sin(angle)) * spawner.ringRadius;
         position.x = std::clamp(position.x, -kArenaHalfSize, kArenaHalfSize);
         position.z = std::clamp(position.z, -kArenaHalfSize, kArenaHalfSize);
-        position.y = heightAt(terrain, position.x, position.z) + 0.5f * scale; // sphere radius is 0.5
+        position.y = heightAt(state.terrain, position.x, position.z) + 0.5f * scale; // sphere radius is 0.5
 
         const entt::entity enemy = scene.create(name, {.position = position, .scale = glm::vec3(scale)});
         registry.emplace<Enemy>(enemy, stats);
@@ -255,13 +287,13 @@ void Game::updateEnemies(Scene& scene, float dt) {
 
     for (auto [entity, spawner] : registry.view<Spawner>().each()) {
         // The boss comes once. The normal spawns continue.
-        if (!bossSpawned && elapsed >= spawner.bossTime) {
-            bossSpawned = true;
-            boss = spawn(spawner, "Boss", 3.0f, Enemy{.speed = 2.5f, .radius = 1.2f, .damage = 40.0f, .xpValue = 0.0f},
+        if (!state.bossSpawned && state.elapsed >= spawner.bossTime) {
+            state.bossSpawned = true;
+            state.boss = spawn(spawner, "Boss", 3.0f, Enemy{.speed = 2.5f, .radius = 1.2f, .damage = 40.0f, .xpValue = 0.0f},
                          spawner.bossHealth, bossMaterial);
         }
 
-        const float difficulty = 1.0f + spawner.ramp * elapsed / 60.0f;
+        const float difficulty = 1.0f + spawner.ramp * state.elapsed / 60.0f;
         spawner.timer += dt;
 
         if (spawner.timer < std::max(spawner.minInterval, spawner.interval / difficulty))
@@ -297,7 +329,7 @@ void Game::updateEnemies(Scene& scene, float dt) {
 
     // The enemies stay on the ground. The sphere mesh has a radius of 0.5, so the center is half the scale above it.
     for (auto [entity, transform, enemy] : registry.view<Transform, Enemy>().each())
-        transform.position.y = heightAt(terrain, transform.position.x, transform.position.z) + 0.5f * transform.scale.y;
+        transform.position.y = heightAt(state.terrain, transform.position.x, transform.position.z) + 0.5f * transform.scale.y;
 
     // An enemy that touches the player removes health. The collision step moves it out to exactly the sum of
     // the two radii, so the test adds a small margin.
@@ -318,10 +350,10 @@ void Game::updateEnemies(Scene& scene, float dt) {
 
     health.current -= strongest * std::sqrt(static_cast<float>(touching)) * dt;
 
-    // The run ends at 0 health. GameApp shows the game over screen.
+    // The run ends at 0 health. update() then shows the game over screen.
     if (health.current <= 0.0f) {
         health.current = 0.0f;
-        dead = true;
+        state.dead = true;
     }
 }
 
@@ -332,16 +364,16 @@ void Game::rollChoices() {
         all[i] = static_cast<Upgrade>(i);
 
     std::shuffle(all.begin(), all.end(), rng);
-    std::copy_n(all.begin(), choices.size(), choices.begin());
+    std::copy_n(all.begin(), state.choices.size(), state.choices.begin());
 }
 
-void Game::choose(Scene& scene, int index) {
-    if (pendingLevelUps == 0)
+void Game::choose(int index) {
+    if (state.pendingLevelUps == 0)
         return;
 
-    applyUpgrade(scene, player, choices[index]);
-    pendingLevelUps--;
+    applyUpgrade(scene, state.player, state.choices[index]);
+    state.pendingLevelUps--;
 
-    if (pendingLevelUps > 0)
+    if (state.pendingLevelUps > 0)
         rollChoices();
 }

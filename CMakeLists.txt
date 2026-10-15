@@ -134,9 +134,7 @@ add_executable(dgfx
     src/main.cpp
     src/game/collision.cpp
     src/game/components.cpp
-    src/game/demo.cpp
     src/game/game.cpp
-    src/game/game_app.cpp
     src/game/props.cpp
     src/game/screens.cpp
     src/game/terrain.cpp

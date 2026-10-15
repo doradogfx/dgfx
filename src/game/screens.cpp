@@ -3,6 +3,7 @@
 #include "game/upgrades.h"
 #include "game/xp.h"
 
+#include <GLFW/glfw3.h>
 #include <imgui.h>
 
 #include <cstdio>
@@ -62,18 +63,18 @@ PauseAction pauseMenu() {
     return action;
 }
 
-GameOverAction endScreen(const Game& game, const Scene& scene) {
+GameOverAction endScreen(const RunState& state, const Scene& scene) {
     GameOverAction action = GameOverAction::None;
 
-    if (beginCentered(game.won ? "You win!" : "Game over")) {
+    if (beginCentered(state.won ? "You win!" : "Game over")) {
         char time[16];
-        formatTime(time, sizeof(time), game.elapsed);
+        formatTime(time, sizeof(time), state.elapsed);
         ImGui::Text("Survived %s", time);
 
-        if (const Experience* experience = scene.registry.valid(game.player) ? scene.registry.try_get<Experience>(game.player) : nullptr)
+        if (const Experience* experience = scene.registry.valid(state.player) ? scene.registry.try_get<Experience>(state.player) : nullptr)
             ImGui::Text("Level %d", experience->level);
 
-        ImGui::Text("Kills %d", game.kills);
+        ImGui::Text("Kills %d", state.kills);
         ImGui::Spacing();
 
         if (bigButton("Restart") || enterPressed())
@@ -86,7 +87,7 @@ GameOverAction endScreen(const Game& game, const Scene& scene) {
     return action;
 }
 
-int levelUpChoice(const Game& game) {
+int levelUpChoice(const RunState& state) {
     int chosen = -1;
 
     if (beginCentered("Level up!")) {
@@ -95,9 +96,9 @@ int levelUpChoice(const Game& game) {
 
         const ImGuiKey keys[] = {ImGuiKey_1, ImGuiKey_2, ImGuiKey_3};
 
-        for (int i = 0; i < static_cast<int>(game.choices.size()); i++) {
+        for (int i = 0; i < static_cast<int>(state.choices.size()); i++) {
             char label[64];
-            std::snprintf(label, sizeof(label), "%d. %s", i + 1, upgradeLabel(game.choices[i]));
+            std::snprintf(label, sizeof(label), "%d. %s", i + 1, upgradeLabel(state.choices[i]));
 
             if (bigButton(label) || ImGui::IsKeyPressed(keys[i], false))
                 chosen = i;
@@ -122,15 +123,15 @@ static void bar(float fraction, float width, const char* text, ImVec4 color) {
     ImGui::GetWindowDrawList()->AddText(position, ImGui::GetColorU32(ImGuiCol_Text), text);
 }
 
-void hud(const Game& game, const Scene& scene) {
-    if (!scene.registry.valid(game.player)) // the editor can delete the player
+void hud(const RunState& state, const Scene& scene) {
+    if (!scene.registry.valid(state.player)) // the editor can delete the player
         return;
 
     const ImVec2 screen = ImGui::GetIO().DisplaySize;
     ImGui::SetNextWindowPos(ImVec2(screen.x * 0.5f, ImGui::GetFrameHeight() * 1.5f), ImGuiCond_Always, ImVec2(0.5f, 0.0f));
     ImGui::SetNextWindowBgAlpha(0.35f);
 
-    // The HUD only shows information. It must not take mouse clicks or keys from the game.
+    // The HUD only shows information. It must not take mouse clicks or keys from the state.
     const ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoNav |
                                    ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings |
                                    ImGuiWindowFlags_NoFocusOnAppearing;
@@ -139,25 +140,105 @@ void hud(const Game& game, const Scene& scene) {
         const float width = ImGui::GetFontSize() * 20.0f;
         char text[64];
 
-        if (const Health* health = scene.registry.try_get<Health>(game.player)) {
+        if (const Health* health = scene.registry.try_get<Health>(state.player)) {
             std::snprintf(text, sizeof(text), "%.0f / %.0f", health->current, health->max);
             bar(health->max > 0.0f ? health->current / health->max : 0.0f, width, text, ImGui::GetStyleColorVec4(ImGuiCol_PlotHistogram));
         }
 
-        if (const Experience* experience = scene.registry.try_get<Experience>(game.player)) {
+        if (const Experience* experience = scene.registry.try_get<Experience>(state.player)) {
             std::snprintf(text, sizeof(text), "Level %d", experience->level);
             bar(experience->xp / xpToNext(*experience), width, text, ImVec4(0.3f, 0.7f, 1.0f, 1.0f)); // the orb color
         }
 
         char time[16];
-        formatTime(time, sizeof(time), game.elapsed);
-        ImGui::Text("%s   |   %d kills", time, game.kills);
+        formatTime(time, sizeof(time), state.elapsed);
+        ImGui::Text("%s   |   %d kills", time, state.kills);
 
-        if (const Health* health = scene.registry.valid(game.boss) ? scene.registry.try_get<Health>(game.boss) : nullptr) {
+        if (const Health* health = scene.registry.valid(state.boss) ? scene.registry.try_get<Health>(state.boss) : nullptr) {
             std::snprintf(text, sizeof(text), "Boss %.0f / %.0f", health->current, health->max);
             bar(health->current / health->max, width, text, ImVec4(0.8f, 0.1f, 0.1f, 1.0f));
         }
     }
 
     ImGui::End();
+}
+
+void Game::restart(Screen next) {
+    openScene(sceneName());
+    screen = next;
+}
+
+void Game::gameUI() {
+    const bool playing = state.player != entt::null;
+    const bool choosing = playing && screen == Screen::Playing && state.pendingLevelUps > 0;
+    const bool wantsCursor = playing && (screen != Screen::Playing || choosing);
+
+    // A free cursor on the menus and the level-up choice, so the player can click. Every frame, because a click
+    // outside the window captures the cursor again. Captured once when play continues, so Tab still frees it
+    // for the debug panels.
+    if (wantsCursor)
+        input.setCaptured(false);
+    else if (cursorFree)
+        input.setCaptured(true);
+
+    cursorFree = wantsCursor;
+
+    if (!playing)
+        return;
+
+    // A change of screen can load the scene again, which starts a new run. Return after it.
+    switch (screen) {
+    case Screen::Menu: {
+        const MenuAction action = mainMenu();
+
+        if (action != MenuAction::None)
+            audio.play("ui_select.wav");
+
+        if (action == MenuAction::Start)
+            screen = Screen::Playing;
+        else if (action == MenuAction::Quit)
+            glfwSetWindowShouldClose(window.handle(), GLFW_TRUE);
+        return;
+    }
+
+    case Screen::Playing:
+        hud(state, scene);
+
+        if (choosing) {
+            if (const int chosen = levelUpChoice(state); chosen >= 0) {
+                audio.play("ui_select.wav");
+                choose(chosen);
+            }
+        }
+        return;
+
+    case Screen::Paused: {
+        hud(state, scene);
+        const PauseAction action = pauseMenu();
+
+        if (action != PauseAction::None)
+            audio.play("ui_select.wav");
+
+        if (action == PauseAction::Resume)
+            screen = Screen::Playing;
+        else if (action == PauseAction::Restart)
+            restart(Screen::Playing);
+        else if (action == PauseAction::Menu)
+            restart(Screen::Menu);
+        return;
+    }
+
+    case Screen::GameOver: {
+        const GameOverAction action = endScreen(state, scene);
+
+        if (action != GameOverAction::None)
+            audio.play("ui_select.wav");
+
+        if (action == GameOverAction::Restart)
+            restart(Screen::Playing);
+        else if (action == GameOverAction::Menu)
+            restart(Screen::Menu);
+        return;
+    }
+    }
 }

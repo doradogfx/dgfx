@@ -1,11 +1,7 @@
 #pragma once
 
-#include "assets/assets.h"
-#include "audio/audio.h"
-#include "core/input.h"
+#include "core/application.h"
 #include "renderer/material.h"
-#include "scene/component_registry.h"
-#include "scene/scene.h"
 #include "game/props.h"
 #include "game/terrain.h"
 #include "game/upgrades.h"
@@ -71,29 +67,19 @@ struct OrbitCamera {
     float pitch = -20.0f; // not saved
 };
 
-struct Game {
-    Game(Scene& scene, Assets& assets); // for a scene loaded from level.json: finds the player entity
-
-    void update(Scene& scene, const Input& input, Audio& audio, float dt);
-
-    entt::entity player;
+// What one run changes. A new run starts from a fresh RunState.
+struct RunState {
+    entt::entity player = entt::null;
     int kills = 0;
     float elapsed = 0.0f; // seconds survived
     bool dead = false;    // health reached 0: the run is over
     bool won = false;     // the boss is dead: the run is over
     entt::entity boss = entt::null; // valid while the boss is alive
+    bool bossSpawned = false;
 
     // Level-ups that wait for a choice. While one waits, the game is paused.
     int pendingLevelUps = 0;
     std::array<Upgrade, 3> choices{};
-
-    // Applies one of the 3 choices and closes that level-up.
-    void choose(Scene& scene, int index);
-
-private:
-    void updateEnemies(Scene& scene, float dt);
-    void rollChoices(); // 3 different random upgrades
-    void updateWorld(Scene& scene); // makes the terrain mesh and the props again when their settings change
 
     // Copies of the level's Terrain and Props components. Flat ground when the level has no Terrain.
     Terrain terrain{.amplitude = 0.0f};
@@ -102,11 +88,41 @@ private:
     Props props;
     bool propsMade = false;
     glm::vec3 playerStart{0.0f}; // the props keep this area clear
+};
+
+// The dgfx game on top of the engine. A scene with a Player entity is played (third-person camera); any other
+// scene, like the demo, is just looked around with the fly camera. Scenes are chosen from File > Open scene.
+class Game : public Application {
+public:
+    Game();
+
+    void update(float dt) override;
+    void sceneOpened() override;
+    void statsOverlay() override;
+    void gameUI() override; // in screens.cpp
+
+private:
+    // The screens of a scene with a player. The level-up choice is not a screen: it shows over Playing.
+    // ponytail: an enum and a switch. Use a class for each state when one screen gets its own logic.
+    enum class Screen { Menu, Playing, Paused, GameOver };
+
+    // Loads the open scene again, which gives a fresh run.
+    void restart(Screen next);
+
+    void startRun(); // finds the player entity of the loaded scene
+    void simulate(float dt);
+    void updateEnemies(float dt);
+    void updateWorld(); // makes the terrain mesh and the props again when their settings change
+    void rollChoices(); // 3 different random upgrades
+    void choose(int index); // applies one of the 3 choices and closes that level-up
+
+    RunState state;
+    Screen screen = Screen::Menu;
+    bool cursorFree = false; // the game UI freed the cursor last frame
 
     const Mesh* enemyMesh = nullptr; // the sphere
     const Mesh* cubeMesh = nullptr;
-    bool bossSpawned = false;
-    std::mt19937 rng{std::random_device{}()}; // a new seed each run: spawns and upgrade choices differ
+    std::mt19937 rng{std::random_device{}()}; // a random seed: spawns and upgrade choices differ in each run
     Material enemyMaterial{nullptr, nullptr, glm::vec3(0.6f, 0.02f, 0.02f), glm::vec3(0.3f), 32.0f}; // linear red plastic
     Material bossMaterial{nullptr, nullptr, glm::vec3(0.15f, 0.0f, 0.2f), glm::vec3(0.5f), 64.0f}; // dark purple
     Material flashMaterial = plastic({1.0f, 1.0f, 1.0f}, 32.0f); // an enemy that was just hit
@@ -115,5 +131,5 @@ private:
     Material orbMaterial = plastic({0.3f, 0.7f, 1.0f}, 64.0f);
 };
 
-// Registers the game's components (and the demo's Rotator) with the inspector.
+// Registers the game's components with the inspector.
 void registerGameComponents(ComponentRegistry& components);

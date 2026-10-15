@@ -112,7 +112,7 @@ Scenes are read when the app starts and whenever you open one from **File → Op
 
 ## Project layout
 
-- `src/engine/`: the engine, built as a static library (`dgfx_engine`) that knows nothing about any game: `core/` (window, application loop, input, camera), `renderer/`, `assets/`, `scene/` (entities, components, scene files) and `ui/`.
+- `src/engine/`: the engine, built as a static library (`dgfx_engine`) that knows nothing about any game: `core/` (window, application loop, input and the fly camera, asset paths), `renderer/`, `assets/`, `scene/` (entities, components, scene files) and `ui/`.
 - `src/game/`: the game (`dgfx`), an executable on top of the engine. It derives from `Application`, registers its own components and loads its scenes.
 - `scenes/`: the scene files.
 - `shaders/`, `textures/`, `models/`, `sounds/`: assets, loaded from here at runtime.

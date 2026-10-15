@@ -7,54 +7,54 @@
 #include "renderer/renderer.h"
 #include "scene/component_registry.h"
 #include "scene/scene.h"
+#include "ui/ui.h"
 
 #include <string>
 
-// The window, the engine subsystems and the main loop. A game derives from it, builds its scene in its own
-// constructor and overrides the hooks.
+// The engine: the window, the subsystems and the frame loop. A game derives from it, sets itself up in its
+// constructor (registers its components, opens its first scene) and overrides the hooks.
+//
+// Each frame, run() does:
+//   1. input.update(), then update(dt) or the fly camera, then scene.update(dt)
+//   2. the debug UI (editor build), then gameUI()
+//   3. renderer.render(), then the swap
+//   4. between frames: the display changes and the scene picked in the debug UI
 class Application {
 public:
     Application();
-    virtual ~Application();
+    virtual ~Application() = default;
 
-    // Scene files live in scenes/. loadScene empties the scene first.
-    void loadScene(const std::string& file);
-    void saveScene(const std::string& file) const;
-
-    // Runs until the window closes.
+    // Runs the frame loop until the window closes.
     void run();
 
-    Application(const Application&) = delete;
-    Application& operator=(const Application&) = delete;
+    // Scene files live in scenes/. openScene replaces the scene with the file's, then calls sceneOpened().
+    void openScene(const std::string& file);
+    void saveScene() const; // into the file that is open. Throws if it can't write it.
+    const std::string& sceneName() const { return currentScene; } // empty if none
 
-protected:
-    // Once per frame, after input is read and before the render.
+    // The hooks. update() is not called while the fly camera is on.
     virtual void update(float dt) = 0;
+    virtual void sceneOpened() {}  // set up the game's state for the new scene
+    virtual void gameUI() {}       // game windows: menus, HUD, choices
+    virtual void statsOverlay() {} // extra lines for the stats overlay
 
-    // Switches to a scene file, chosen from File > Open scene. A game overrides it to set up its own state;
-    // the default just loads the scene. Called between frames, never in the middle of one.
-    virtual void openScene(const std::string& file) { loadScene(file); }
+    // The debug fly camera: F1 toggles it in the editor build. A game turns it on for a scene with nothing to play.
+    bool flyMode = false;
 
-    // The scene file that is open, empty if none.
-    const std::string& sceneName() const { return currentScene; }
-
-    // Game windows, drawn every frame after the debug UI (menus, HUD, choices).
-    virtual void gameUI() {}
-
-    // Extra lines for the stats overlay.
-    virtual void statsOverlay() {}
-
-    // Declaration order matters: members are destroyed in reverse, so the window (and its GL context) goes
-    // last, and the assets come before the scene whose components point into them.
+    // The parts of the engine. Start-up makes them in this order, and shut-down destroys them in the reverse
+    // order: the window (and its GL context) goes last, and the assets outlive the scene that points into them.
     Window window;
     Audio audio;
     Assets assets;
     Scene scene;
     Renderer renderer;
     ComponentRegistry components;
-    Input input; // before the UI starts, so ImGui chains to its scroll callback
+    Input input;
+    Ui ui; // after the input, so ImGui chains to its scroll callback
+
+    Application(const Application&) = delete;
+    Application& operator=(const Application&) = delete;
 
 private:
     std::string currentScene;
-    std::string pendingScene; // requested by the UI, opened at the start of the next frame
 };

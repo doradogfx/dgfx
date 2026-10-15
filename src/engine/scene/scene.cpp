@@ -58,3 +58,23 @@ entt::entity Scene::camera() const {
     auto view = registry.view<const Camera>();
     return view.empty() ? entt::null : view.front();
 }
+
+void Scene::update(float dt) {
+    for (auto [entity, rotator, transform] : registry.view<Rotator, Transform>().each()) {
+        if (rotator.enabled)
+            transform.rotation = glm::mod(transform.rotation + rotator.degreesPerSecond * dt, glm::vec3(360.0f));
+    }
+
+    const entt::entity cameraEntity = camera();
+
+    if (cameraEntity == entt::null)
+        return;
+
+    const glm::vec3 cameraPosition = position(cameraEntity);
+    const glm::vec3 cameraForward = forward(cameraEntity);
+
+    for (auto [entity, transform] : registry.view<Transform, FollowCamera>().each()) {
+        transform.position = cameraPosition;
+        transform.rotation = aimRotation(cameraForward);
+    }
+}

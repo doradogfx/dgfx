@@ -4,7 +4,8 @@
 #include "scene/scene.h"
 
 // The game windows: menu, pause, game over, HUD and the level-up choice. Each function draws its window and
-// returns what the player chose. GameApp changes the screen. Every button also has a key.
+// returns what the player chose. Game::gameUI, at the end of screens.cpp, changes the screen. Every button also
+// has a key.
 
 enum class MenuAction { None, Start, Quit };
 enum class PauseAction { None, Resume, Restart, Menu };
@@ -12,10 +13,10 @@ enum class GameOverAction { None, Restart, Menu };
 
 MenuAction mainMenu();                                          // Enter = Start
 PauseAction pauseMenu();                                        // Enter = Resume
-GameOverAction endScreen(const Game& game, const Scene& scene); // "You win!" or "Game over". Enter = Restart
+GameOverAction endScreen(const RunState& state, const Scene& scene); // "You win!" or "Game over". Enter = Restart
 
 // Returns the index of the chosen upgrade, or -1. Keys 1, 2 and 3 choose too.
-int levelUpChoice(const Game& game);
+int levelUpChoice(const RunState& state);
 
 // Health, XP and level, the time and the kills, at the top of the screen. The boss health while the boss lives.
-void hud(const Game& game, const Scene& scene);
+void hud(const RunState& state, const Scene& scene);

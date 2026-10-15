@@ -10,7 +10,7 @@
 // transform's "parent" is just an index. Throws with the path in the message if the file can't be read or parsed.
 void saveScene(const Scene& scene, const Assets& assets, const ComponentRegistry& components, const std::string& path);
 
-// Fills a scene from a file. The scene should be empty.
+// Replaces the scene with the file's entities and sky.
 void loadScene(Scene& scene, Assets& assets, const ComponentRegistry& components, const std::string& path);
 
 // Materials hold pointers to textures, so they need the assets to be saved or loaded.

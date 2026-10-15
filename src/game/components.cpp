@@ -1,4 +1,3 @@
-#include "game/demo.h"
 #include "game/game.h"
 #include "game/props.h"
 #include "game/terrain.h"
@@ -9,7 +8,6 @@
 #include <imgui.h>
 
 // Authored settings only: runtime state (velocity, the spawn timer) is not saved.
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Rotator, degreesPerSecond, enabled)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Player, speed, jumpSpeed)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Health, current, max)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Enemy, speed, radius, damage, xpValue)
@@ -22,23 +20,7 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Props, rocks, trees, clearRadius
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(OrbitCamera, distance, minDistance, maxDistance, height, sensitivity, minPitch, maxPitch)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Terrain,size, resolution, base, amplitude, frequency, octaves, seed, color)
 
-// A tag has nothing to save.
-static void to_json(Json& json, const FollowCamera&) {
-    json = Json::object();
-}
-
-static void from_json(const Json&, FollowCamera&) {}
-
 void registerGameComponents(ComponentRegistry& components) {
-    components.add<Rotator>("Rotator", [](Rotator& rotator) {
-        ImGui::Checkbox("Enabled", &rotator.enabled);
-        ImGui::DragFloat3("Speed", glm::value_ptr(rotator.degreesPerSecond), 1.0f, 0.0f, 0.0f, "%.1f deg/s");
-    });
-
-    components.add<FollowCamera>("Follow camera", [](FollowCamera&) {
-        ImGui::TextDisabled("Follows the camera");
-    });
-
     components.add<OrbitCamera>("Orbit camera", [](OrbitCamera& orbit) {
         ImGui::DragFloat("Distance", &orbit.distance, 0.1f, orbit.minDistance, orbit.maxDistance);
         ImGui::DragFloat("Min distance", &orbit.minDistance, 0.1f, 0.1f, orbit.maxDistance);

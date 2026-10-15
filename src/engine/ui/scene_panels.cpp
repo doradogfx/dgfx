@@ -4,7 +4,6 @@
 #include "scene/component_registry.h"
 #include "scene/scene.h"
 #include "scene/scene_io.h"
-#include "ui/ui.h"
 
 #include <glm/gtc/type_ptr.hpp>
 #include <imgui.h>
@@ -181,8 +180,8 @@ static void vec3Row(const char* label, glm::vec3& value, float resetValue, float
 }
 
 // The selected entity: its name, transform and registered components.
-void inspectorPanel(UiContext& context) {
-    entt::registry& registry = context.scene.registry;
+void inspectorPanel(Scene& scene, Assets& assets, const ComponentRegistry& components) {
+    entt::registry& registry = scene.registry;
 
     if (!registry.valid(selected)) {
         ImGui::TextDisabled("Select an entity to inspect it");
@@ -229,11 +228,11 @@ void inspectorPanel(UiContext& context) {
         ImGui::PopID();
     }
 
-    context.components.inspect(registry, selected, context.assets);
+    components.inspect(registry, selected, assets);
 }
 
 // Applies what a hierarchy context menu asked for, now that nothing is walking the registry.
-static void applyPending(UiContext& context) {
+static void applyPending(Scene& scene, Assets& assets, const ComponentRegistry& components) {
     const Pending request = pending;
     pending = {};
 
@@ -241,19 +240,18 @@ static void applyPending(UiContext& context) {
     case Action::None:
         break;
     case Action::AddEntity:
-        selected = context.scene.create("Entity", {.parent = request.target});
+        selected = scene.create("Entity", {.parent = request.target});
         break;
     case Action::Duplicate:
-        selected = duplicateEntity(context.scene, context.assets, context.components, request.target);
+        selected = duplicateEntity(scene, assets, components, request.target);
         break;
     case Action::Delete:
-        context.scene.destroy(request.target); // a destroyed selection fails registry.valid() and clears itself
+        scene.destroy(request.target); // a destroyed selection fails registry.valid() and clears itself
         break;
     }
 }
 
-void hierarchyPanel(UiContext& context) {
-    const Scene& scene = context.scene;
+void hierarchyPanel(Scene& scene, Assets& assets, const ComponentRegistry& components) {
     const ImGuiStyle& style = ImGui::GetStyle();
 
     // Toolbar: a search field, and a button that adds an entity at the root. With an entity selected, the new
@@ -326,5 +324,5 @@ void hierarchyPanel(UiContext& context) {
         ImGui::EndPopup();
     }
 
-    applyPending(context);
+    applyPending(scene, assets, components);
 }

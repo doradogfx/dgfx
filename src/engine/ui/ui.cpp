@@ -1,7 +1,7 @@
 #include "ui/ui.h"
 
-#include "renderer/renderer.h"
-#include "scene/scene.h"
+#include "core/application.h"
+#include "core/paths.h"
 #include "ui/panels.h"
 
 #include <GLFW/glfw3.h>
@@ -10,9 +10,13 @@
 #include <imgui_impl_opengl3.h>
 
 #include <algorithm>
+#include <cstdio>
+#include <exception>
+#include <filesystem>
 #include <string>
+#include <vector>
 
-void initUI(GLFWwindow* window) {
+Ui::Ui(GLFWwindow* window) {
     ImGui::CreateContext();
 
 #if !DGFX_EDITOR
@@ -23,21 +27,21 @@ void initUI(GLFWwindow* window) {
     initUiScale();
 }
 
-void beginUI() {
+Ui::~Ui() {
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
+}
+
+void Ui::beginFrame() {
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 }
 
-void endUI() {
+void Ui::endFrame() {
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-}
-
-void shutdownUI() {
-    ImGui_ImplOpenGL3_Shutdown();
-    ImGui_ImplGlfw_Shutdown();
-    ImGui::DestroyContext();
 }
 
 // Which panels are open, toggled from the View menu.
@@ -72,7 +76,7 @@ static void endPanel() {
 }
 
 // Small overlay without a title bar, pinned to a bottom-left corner: `left` is its left edge.
-static void statsOverlay(const UiContext& context, float left, float margin) {
+static void statsOverlay(Application& app, float left, float margin) {
     const ImGuiIO& io = ImGui::GetIO();
     const ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize |
                                    ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings |
@@ -83,34 +87,55 @@ static void statsOverlay(const UiContext& context, float left, float margin) {
 
     if (ImGui::Begin("Stats", &panels.stats, flags)) {
         ImGui::Text("%.1f FPS (%.2f ms)", io.Framerate, 1000.0f / io.Framerate);
-        ImGui::Text("%zu entities, %d objects in %d draws", static_cast<size_t>(context.scene.registry.view<const Name>().size()), context.renderer.instances, context.renderer.drawCalls);
-
-        if (context.statsExtra)
-            context.statsExtra();
-
+        ImGui::Text("%zu entities, %d objects in %d draws", static_cast<size_t>(app.scene.registry.view<const Name>().size()), app.renderer.instances, app.renderer.drawCalls);
+        app.statsOverlay(); // the game's own lines
         ImGui::TextDisabled("Tab: toggle camera / UI mode");
+        ImGui::TextDisabled("F1: fly camera");
     }
 
     ImGui::End();
 }
 
-void debugUI(GLFWwindow* window, UiContext& context) {
+// The .json files in scenes/, by name.
+static std::vector<std::string> sceneFiles() {
+    std::vector<std::string> names;
+
+    for (const auto& entry : std::filesystem::directory_iterator(assetRoot() + "scenes/")) {
+        if (entry.path().extension() == ".json")
+            names.push_back(entry.path().filename().string());
+    }
+
+    std::sort(names.begin(), names.end());
+    return names;
+}
+
+std::string debugUI(Application& app) {
     static double savedAt = -100.0;
     static bool saveFailed = false;
 
+    GLFWwindow* window = app.window.handle();
+    std::string picked; // the application opens it between frames, not while the panels use the scene
+
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("File")) {
-            if (ImGui::BeginMenu("Open scene", static_cast<bool>(context.listScenes) && static_cast<bool>(context.openScene))) {
-                for (const std::string& file : context.listScenes()) {
-                    if (ImGui::MenuItem(file.c_str(), nullptr, file == context.sceneName))
-                        context.openScene(file);
+            if (ImGui::BeginMenu("Open scene")) {
+                for (const std::string& file : sceneFiles()) {
+                    if (ImGui::MenuItem(file.c_str(), nullptr, file == app.sceneName()))
+                        picked = file;
                 }
 
                 ImGui::EndMenu();
             }
 
-            if (ImGui::MenuItem("Save scene", nullptr, false, !context.sceneName.empty() && static_cast<bool>(context.save))) {
-                saveFailed = !context.save();
+            if (ImGui::MenuItem("Save scene", nullptr, false, !app.sceneName().empty())) {
+                try {
+                    app.saveScene();
+                    saveFailed = false;
+                } catch (const std::exception& e) {
+                    std::fprintf(stderr, "%s\n", e.what());
+                    saveFailed = true;
+                }
+
                 savedAt = ImGui::GetTime();
             }
 
@@ -137,7 +162,7 @@ void debugUI(GLFWwindow* window, UiContext& context) {
         }
 
         // The loaded scene on the right, with the result of a save for a few seconds.
-        std::string label = context.sceneName;
+        std::string label = app.sceneName();
 
         if (!label.empty() && ImGui::GetTime() - savedAt < 3.0)
             label += saveFailed ? "  (save failed, see the console)" : "  (saved)";
@@ -172,7 +197,7 @@ void debugUI(GLFWwindow* window, UiContext& context) {
 
     if (panels.hierarchy) {
         if (beginPanel("Hierarchy", &panels.hierarchy, ImVec2(margin, top), ImVec2(width, hierarchyHeight), placeNow))
-            hierarchyPanel(context);
+            hierarchyPanel(app.scene, app.assets, app.components);
 
         endPanel();
     }
@@ -180,14 +205,14 @@ void debugUI(GLFWwindow* window, UiContext& context) {
     if (panels.inspector) {
         if (beginPanel("Inspector", &panels.inspector, ImVec2(margin, top + hierarchyHeight + margin),
                        ImVec2(width, height - hierarchyHeight - margin), placeNow))
-            inspectorPanel(context);
+            inspectorPanel(app.scene, app.assets, app.components);
 
         endPanel();
     }
 
     if (panels.renderer) {
         if (beginPanel("Renderer", &panels.renderer, ImVec2(right, top), ImVec2(width, rendererHeight), placeNow))
-            rendererPanel(context.renderer);
+            rendererPanel(app.renderer);
 
         endPanel();
     }
@@ -203,6 +228,8 @@ void debugUI(GLFWwindow* window, UiContext& context) {
     // The stats go in the bottom-left corner of the game view, clear of the left column.
     if (panels.stats) {
         const bool leftColumn = panels.hierarchy || panels.inspector;
-        statsOverlay(context, leftColumn ? margin + width + margin : margin, margin);
+        statsOverlay(app, leftColumn ? margin + width + margin : margin, margin);
     }
+
+    return picked;
 }

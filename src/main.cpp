@@ -1,12 +1,12 @@
-#include "game/game_app.h"
+#include "game/game.h"
 
 #include <cstdio>
 #include <exception>
 
 int main() {
     try {
-        GameApp app;
-        app.run();
+        Game game;
+        game.run();
     } catch (const std::exception& e) {
         std::fprintf(stderr, "%s\n", e.what());
         return 1;

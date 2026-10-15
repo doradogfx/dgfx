@@ -2,48 +2,24 @@
 
 #include "core/paths.h"
 #include "scene/scene_io.h"
-#include "ui/ui.h"
 
 #include <GLFW/glfw3.h>
 
-#include <algorithm>
-#include <cstdio>
-#include <exception>
-#include <filesystem>
-#include <vector>
-
 Application::Application()
     : renderer(window.framebufferSize().x, window.framebufferSize().y),
-      input(window.handle()) {
+      input(window.handle()),
+      ui(window.handle()) {
     registerEngineComponents(components);
-    initUI(window.handle());
 }
 
-// The .json files in scenes/, by name.
-static std::vector<std::string> sceneFiles() {
-    std::vector<std::string> names;
-
-    for (const auto& entry : std::filesystem::directory_iterator(assetRoot() + "scenes/")) {
-        if (entry.path().extension() == ".json")
-            names.push_back(entry.path().filename().string());
-    }
-
-    std::sort(names.begin(), names.end());
-    return names;
-}
-
-void Application::loadScene(const std::string& file) {
-    scene.registry = entt::registry(); // fresh, so ids count up from 0 in creation order (clear() would recycle them)
-    ::loadScene(scene, assets, components, assetRoot() + "scenes/" + file);
+void Application::openScene(const std::string& file) {
+    loadScene(scene, assets, components, assetRoot() + "scenes/" + file);
     currentScene = file;
+    sceneOpened();
 }
 
-void Application::saveScene(const std::string& file) const {
-    ::saveScene(scene, assets, components, assetRoot() + "scenes/" + file);
-}
-
-Application::~Application() {
-    shutdownUI();
+void Application::saveScene() const {
+    ::saveScene(scene, assets, components, assetRoot() + "scenes/" + currentScene);
 }
 
 void Application::run() {
@@ -58,13 +34,20 @@ void Application::run() {
         const float dt = static_cast<float>(now - lastTime);
         lastTime = now;
 
-        if (!pendingScene.empty()) {
-            openScene(pendingScene);
-            pendingScene.clear();
-        }
-
+        // 1. The game logic.
         input.update();
-        update(dt);
+
+#if DGFX_EDITOR
+        if (input.pressed(GLFW_KEY_F1))
+            flyMode = !flyMode;
+#endif
+
+        if (flyMode)
+            flyCamera(scene, input, dt);
+        else
+            update(dt);
+
+        scene.update(dt); // the engine's own components: Rotator, FollowCamera
 
         const glm::ivec2 size = window.framebufferSize();
 
@@ -75,33 +58,24 @@ void Application::run() {
             continue;
         }
 
-        beginUI();
+        // 2. The UI. ImGui only collects it here, endFrame draws it over the scene.
+        ui.beginFrame();
+        std::string pickedScene;
 
 #if DGFX_EDITOR
-        UiContext ui{
-            scene, assets, renderer, components, currentScene,
-            [this] {
-                try {
-                    saveScene(currentScene);
-                    return true;
-                } catch (const std::exception& e) {
-                    std::fprintf(stderr, "%s\n", e.what());
-                    return false;
-                }
-            },
-            [this] { statsOverlay(); },
-            sceneFiles,
-            [this](const std::string& file) { pendingScene = file; },
-        };
-
-        debugUI(handle, ui);
+        pickedScene = debugUI(*this);
 #endif
         gameUI();
 
+        // 3. The frame.
         renderer.render(scene, size.x, size.y);
-        endUI();
-
+        ui.endFrame();
         glfwSwapBuffers(handle);
+
+        // 4. Between frames: changes that must not happen while a frame uses the window or the scene.
         applyDisplayChanges(handle);
+
+        if (!pickedScene.empty())
+            openScene(pickedScene);
     }
 }

@@ -13,7 +13,7 @@ struct GLFWwindow;
 // Tab toggles them.
 class Input {
 public:
-    // Installs the scroll callback. Create before initUI(): ImGui chains to callbacks that already exist.
+    // Installs the scroll callback. Make it before the Ui: ImGui chains to callbacks that already exist.
     explicit Input(GLFWwindow* window);
 
     void update();

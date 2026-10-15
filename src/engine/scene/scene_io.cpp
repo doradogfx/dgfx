@@ -116,6 +116,8 @@ void saveScene(const Scene& scene, const Assets& assets, const ComponentRegistry
 }
 
 void loadScene(Scene& scene, Assets& assets, const ComponentRegistry& components, const std::string& path) {
+    scene.registry = entt::registry(); // fresh, so ids count up from 0 in creation order (clear() would recycle them)
+
     std::ifstream file(path);
 
     if (!file)
