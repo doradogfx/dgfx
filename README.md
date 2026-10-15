@@ -119,7 +119,7 @@ Scenes are read when the app starts and whenever you open one from **File → Op
 
 ## Building
 
-Requires CMake 3.20+, a C++20 compiler and a GPU with OpenGL 4.6. Developed and tested on Windows with MSVC. The first configure downloads and builds the dependencies, so it needs an internet connection and takes a few minutes (Assimp is the slow one).
+Requires CMake 3.26+, a C++20 compiler and a GPU with OpenGL 4.6. Developed and tested on Windows with MSVC. The first configure downloads and builds the dependencies, so it needs an internet connection and takes a few minutes (Assimp is the slow one).
 
 There are two kinds of build, chosen with the `DGFX_EDITOR` CMake option.
 

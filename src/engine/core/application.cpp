@@ -6,8 +6,7 @@
 #include <GLFW/glfw3.h>
 
 Application::Application()
-    : renderer(window.framebufferSize().x, window.framebufferSize().y),
-      input(window.handle()),
+    : input(window.handle()),
       ui(window.handle()) {
     registerEngineComponents(components);
 }

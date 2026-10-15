@@ -1,8 +1,11 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.26)
 project(dgfx LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Static libraries go to lib/, so the exe folder holds only what players need.
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 # OFF for a build to give to players: no debug panels or developer keys (F1, Tab), and the assets go next to the exe.
 option(DGFX_EDITOR "Debug panels, scene editing and developer keys" ON)
@@ -152,12 +155,17 @@ if(NOT DGFX_EDITOR)
         target_link_options(dgfx PRIVATE /ENTRY:mainCRTStartup)
     endif()
 
-    # The assets next to the exe, where assetRoot() looks for them.
+    # The assets next to the exe, where assetRoot() looks for them. A custom target is always out of date, so every
+    # build copies the changed assets, also when no code changed.
     # ponytail: copies the whole folders (also the demo scene and the sound sources). Filter them if size matters.
+    # ponytail: a file deleted from the source stays in the build folder. Delete build-release/ to clean it.
+    set(copy_assets)
     foreach(folder shaders textures models scenes sounds)
-        add_custom_command(TARGET dgfx POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/${folder} $<TARGET_FILE_DIR:dgfx>/${folder})
+        list(APPEND copy_assets COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different
+             ${CMAKE_SOURCE_DIR}/${folder} $<TARGET_FILE_DIR:dgfx>/${folder})
     endforeach()
+    add_custom_target(dgfx_assets ${copy_assets})
+    add_dependencies(dgfx dgfx_assets)
 
     # The licenses of the libraries in the exe. MIT, BSD and zlib want their notices with a binary copy.
     set(licenses_dir $<TARGET_FILE_DIR:dgfx>/licenses)

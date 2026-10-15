@@ -34,7 +34,7 @@ public:
     bool pcf = true;
     bool shadowCullFront = false; // only back faces go into the shadow map, an alternative fix for acne
 
-    Renderer(int width, int height);
+    Renderer();
     ~Renderer();
 
     // Draws a frame: the scene into the off-screen target, then the post pass onto the window.

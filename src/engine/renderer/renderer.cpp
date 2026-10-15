@@ -11,7 +11,7 @@ static std::string shaderPath(const char* file) {
     return assetRoot() + "shaders/" + file;
 }
 
-Renderer::Renderer(int width, int height)
+Renderer::Renderer()
     : lit(shaderPath("lit.vert"), shaderPath("lit.frag")),
       lamp(shaderPath("lit.vert"), shaderPath("light.frag")),
       post(shaderPath("post.vert"), shaderPath("post.frag")),
@@ -20,7 +20,7 @@ Renderer::Renderer(int width, int height)
       cube(makeCube()),
       sphere(makeSphere()),
       white(glm::vec3(1.0f)),
-      sceneTarget(width, height),
+      sceneTarget(1, 1), // render() resizes it to the window on the first frame
       shadowMap(shadowResolution) {
     // The post pass's full-screen triangle comes from gl_VertexID alone, but core profile still requires
     // a VAO to be bound for any draw, so an empty one.
