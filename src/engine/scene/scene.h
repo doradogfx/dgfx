@@ -36,7 +36,4 @@ struct Scene {
 
     // The first entity with a Camera, or entt::null. The renderer draws the scene as this entity sees it.
     entt::entity camera() const;
-
-    // Moves the engine's own components: turns the Rotators, and puts each FollowCamera entity on the camera.
-    void update(float dt);
 };

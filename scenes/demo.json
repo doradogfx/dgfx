@@ -478,14 +478,6 @@
       }
     },
     {
-      "Rotator": {
-        "degreesPerSecond": [
-          0.0,
-          28.64789,
-          0.0
-        ],
-        "enabled": true
-      },
       "name": "Light orbit",
       "transform": {
         "position": [
@@ -674,7 +666,6 @@
       }
     },
     {
-      "Follow camera": {},
       "Spot light": {
         "ambient": [
           0.0,
@@ -706,8 +697,8 @@
           6.0
         ],
         "rotation": [
-          -15.000001,
-          2.504478e-06,
+          -15.0,
+          0.0,
           0.0
         ],
         "scale": [

@@ -5,7 +5,6 @@
 #include "scene/components.h"
 #include "scene/scene_io.h"
 
-#include <glm/gtc/type_ptr.hpp>
 #include <imgui.h>
 
 #include <algorithm>
@@ -16,14 +15,6 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(DirLight, enabled, ambient, diff
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(PointLight, enabled, ambient, diffuse, specular, constant, linear, quadratic)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(SpotLight, enabled, ambient, diffuse, specular, constant, linear, quadratic, innerAngle, outerAngle)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Camera, fov, nearPlane, farPlane)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Rotator, degreesPerSecond, enabled)
-
-// A tag has nothing to save.
-static void to_json(Json& json, const FollowCamera&) {
-    json = Json::object();
-}
-
-static void from_json(const Json&, FollowCamera&) {}
 
 void ComponentRegistry::inspect(entt::registry& registry, entt::entity entity, Assets& assets) const {
     for (const Entry& entry : entries) {
@@ -116,13 +107,4 @@ void registerEngineComponents(ComponentRegistry& components) {
             return ModelRenderer{&assets.model(json.at("model").get<std::string>())};
         },
         false); // needs a model file, so the inspector can't add one from nothing
-
-    components.add<Rotator>("Rotator", [](Rotator& rotator) {
-        ImGui::Checkbox("Enabled", &rotator.enabled);
-        ImGui::DragFloat3("Speed", glm::value_ptr(rotator.degreesPerSecond), 1.0f, 0.0f, 0.0f, "%.1f deg/s");
-    });
-
-    components.add<FollowCamera>("Follow camera", [](FollowCamera&) {
-        ImGui::TextDisabled("Follows the camera");
-    });
 }

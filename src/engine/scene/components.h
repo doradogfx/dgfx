@@ -44,13 +44,3 @@ struct Camera {
     float nearPlane = 0.1f;   // closer than this is not drawn
     float farPlane = 100.0f;  // farther than this is not drawn
 };
-
-// Spins the entity's Transform continuously.
-struct Rotator {
-    glm::vec3 degreesPerSecond{0.0f};
-    bool enabled = true;
-};
-
-// Tag: the entity's transform is set to the camera entity's every frame (e.g. a flashlight). Root entities only:
-// it writes the local transform, so under a parent it would be offset by the parent's.
-struct FollowCamera {};

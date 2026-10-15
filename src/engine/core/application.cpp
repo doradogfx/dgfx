@@ -47,8 +47,6 @@ void Application::run() {
         else
             update(dt);
 
-        scene.update(dt); // the engine's own components: Rotator, FollowCamera
-
         const glm::ivec2 size = window.framebufferSize();
 
         // Minimized: the framebuffer is 0x0, so there's nothing to draw and the aspect ratio would divide by zero.

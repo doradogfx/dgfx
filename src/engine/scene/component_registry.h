@@ -87,5 +87,5 @@ private:
     std::vector<Entry> entries;
 };
 
-// Registers the engine's own components: lights, mesh and model renderers.
+// Registers the engine's own components: lights, the camera, mesh and model renderers.
 void registerEngineComponents(ComponentRegistry& components);
