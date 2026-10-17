@@ -7,6 +7,37 @@
 #include <string>
 
 void rendererPanel(Renderer& renderer) {
+    ImGui::SeparatorText("GPU time");
+
+    if (ImGui::BeginTable("gpu_time", 2, ImGuiTableFlags_SizingStretchProp)) {
+        for (const GpuProfiler::Timing& timing : renderer.profiler.timings()) {
+            ImGui::TableNextRow();
+            ImGui::TableNextColumn();
+            ImGui::TextUnformatted(timing.name.c_str());
+            ImGui::TableNextColumn();
+            ImGui::Text("%.3f ms", timing.ms);
+        }
+
+        ImGui::TableNextRow();
+        ImGui::TableNextColumn();
+        ImGui::TextDisabled("Total");
+        ImGui::TableNextColumn();
+        ImGui::TextDisabled("%.3f ms", renderer.profiler.totalMs());
+        ImGui::EndTable();
+    }
+
+    // A shader that failed keeps drawing with its last working version. Saving its file builds it again.
+    ImGui::SeparatorText("Shaders");
+
+    for (const Shader* shader : renderer.shaders()) {
+        if (shader->error.empty()) {
+            ImGui::TextDisabled("%s  OK", shader->name().c_str());
+        } else {
+            ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.35f, 1.0f), "%s  failed", shader->name().c_str());
+            ImGui::TextWrapped("%s", shader->error.c_str());
+        }
+    }
+
     ImGui::SeparatorText("Rendering");
     ImGui::Checkbox("Blinn-Phong", &renderer.blinn);
     ImGui::Checkbox("Wireframe", &renderer.wireframe);

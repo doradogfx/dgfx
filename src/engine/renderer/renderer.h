@@ -1,6 +1,7 @@
 #pragma once
 
 #include "renderer/framebuffer.h"
+#include "renderer/gpu_profiler.h"
 #include "renderer/mesh.h"
 #include "renderer/shader.h"
 #include "renderer/shadowmap.h"
@@ -9,6 +10,7 @@
 
 #include <glm/glm.hpp>
 
+#include <array>
 #include <vector>
 
 class Renderer {
@@ -43,8 +45,17 @@ public:
     int drawCalls = 0; // draw calls with the lit and lamp shaders in the last frame
     int instances = 0; // objects that those draw calls drew
 
-    // For the debug preview.
+    // GPU time of each pass: Shadow, Scene, Post.
+    // ponytail: the ImGui draw is not measured, it runs after render(). Mark it from the application if it grows.
+    GpuProfiler profiler;
+
+    // Builds again each shader whose files changed. Call between frames.
+    // ponytail: reads the write time of 10 files each frame. Check less often if the shader count grows.
+    void reloadChangedShaders();
+
+    // For the debug panel.
     GLuint shadowMapTexture() const { return shadowMap.textureId(); }
+    std::array<const Shader*, 5> shaders() const { return {&lit, &lamp, &post, &depth, &skybox}; }
 
     Renderer(const Renderer&) = delete;
     Renderer& operator=(const Renderer&) = delete;

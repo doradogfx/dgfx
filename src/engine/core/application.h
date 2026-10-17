@@ -18,7 +18,7 @@
 //   1. input.update(), then update(dt) or the fly camera
 //   2. the debug UI (editor build), then gameUI()
 //   3. renderer.render(), then the swap
-//   4. between frames: the display changes and the scene picked in the debug UI
+//   4. between frames: the display changes, shader reloads (editor build) and the scene picked in the debug UI
 class Application {
 public:
     Application();

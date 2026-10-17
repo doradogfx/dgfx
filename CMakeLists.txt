@@ -110,6 +110,7 @@ add_library(dgfx_engine STATIC
     src/engine/core/window.cpp
     src/engine/renderer/cubemap.cpp
     src/engine/renderer/framebuffer.cpp
+    src/engine/renderer/gpu_profiler.cpp
     src/engine/renderer/light.cpp
     src/engine/renderer/mesh.cpp
     src/engine/renderer/renderer.cpp

@@ -72,6 +72,10 @@ void Application::run() {
         // 4. Between frames: changes that must not happen while a frame uses the window or the scene.
         applyDisplayChanges(handle);
 
+#if DGFX_EDITOR
+        renderer.reloadChangedShaders(); // the editor build reads the shaders from the source tree
+#endif
+
         if (!pickedScene.empty())
             openScene(pickedScene);
     }

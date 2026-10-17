@@ -191,6 +191,8 @@ void Renderer::render(Scene& scene, int width, int height) {
     glNamedBufferData(instanceBuffer, static_cast<GLsizeiptr>(instanceData.size() * sizeof(Instance)), instanceData.data(), GL_STREAM_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, instanceBuffer);
 
+    profiler.beginFrame();
+
     // Shadow pass: the scene's depth as the sun sees it. Lamps don't cast shadows.
     if (castShadows) {
         shadowMap.resize(shadowResolution);
@@ -209,6 +211,8 @@ void Renderer::render(Scene& scene, int width, int height) {
             batch.mesh->drawInstanced(static_cast<GLsizei>(batch.models.size()), batch.first);
         }
     }
+
+    profiler.mark("Shadow"); // also when shadows are off, so the list of passes stays the same
 
     // Scene pass: into the off-screen target.
     sceneTarget.resize(width, height);
@@ -279,6 +283,8 @@ void Renderer::render(Scene& scene, int width, int height) {
         glDepthFunc(GL_LESS);
     }
 
+    profiler.mark("Scene");
+
     // Post pass: the scene texture through the post shader onto the window, one full-screen triangle.
     // sRGB stays on, so the window gets the final encoding.
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -294,6 +300,16 @@ void Renderer::render(Scene& scene, int width, int height) {
     glBindVertexArray(emptyVao);
     glDrawArrays(GL_TRIANGLES, 0, 3);
 
+    profiler.mark("Post");
+    profiler.endFrame();
+
     // Leave sRGB off for whatever draws next (the UI is already sRGB).
     glDisable(GL_FRAMEBUFFER_SRGB);
+}
+
+void Renderer::reloadChangedShaders() {
+    for (Shader* shader : {&lit, &lamp, &post, &depth, &skybox}) {
+        if (shader->reloadIfChanged() && shader->error.empty())
+            std::printf("Reloaded %s\n", shader->name().c_str()); // a failure prints its own error
+    }
 }

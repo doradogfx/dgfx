@@ -88,6 +88,7 @@ static void statsOverlay(Application& app, float left, float margin) {
     if (ImGui::Begin("Stats", &panels.stats, flags)) {
         ImGui::Text("%.1f FPS (%.2f ms)", io.Framerate, 1000.0f / io.Framerate);
         ImGui::Text("%zu entities, %d objects in %d draws", static_cast<size_t>(app.scene.registry.view<const Name>().size()), app.renderer.instances, app.renderer.drawCalls);
+        ImGui::Text("GPU %.2f ms", app.renderer.profiler.totalMs());
         app.statsOverlay(); // the game's own lines
         ImGui::TextDisabled("Tab: toggle camera / UI mode");
         ImGui::TextDisabled("F1: fly camera");

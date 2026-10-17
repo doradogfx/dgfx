@@ -53,6 +53,8 @@ A simplified 3D survivors-like built on the engine.
 - **Debug UI** with Dear ImGui: separate panels for the scene hierarchy, the selected entity's components, and rendering and display settings, plus a stats overlay.
 - **Scene editing** from the UI: add, duplicate and delete entities, add and remove components, save.
 - **Debug fly camera** (F1): mouse look, WASD movement, frame-rate independent speed.
+- **Shader hot reload** (editor build): saving a `.vert` or `.frag` file builds that shader again on the next frame. A shader that fails keeps its last working version, and the Renderer panel shows the error.
+- **GPU profiler**: the GPU time of each render pass (shadow, scene, post) in the Renderer panel, from timer queries, and the total in the stats overlay.
 
 ## Controls
 
