@@ -1,5 +1,6 @@
 #pragma once
 
+#include "renderer/bloom.h"
 #include "renderer/framebuffer.h"
 #include "renderer/gpu_profiler.h"
 #include "renderer/mesh.h"
@@ -15,7 +16,7 @@
 
 class Renderer {
 public:
-    enum PostEffect { None, Grayscale, Invert, Blur, Sharpen, Edges };
+    enum ToneMap { Clip, Reinhard, Aces };
 
     bool blinn = true;
     bool wireframe = false;
@@ -23,8 +24,16 @@ public:
     bool showSkybox = true;
     bool reflections = true;
     bool fresnel = true;
-    int postEffect = None;
-    float gamma = 1.0f;
+
+    // HDR: the scene renders in floats, so lights can be brighter than white. The post pass brings it down to
+    // what the screen can show (the tone map), after it mixes in the bloom.
+    int toneMap = Aces;
+    float exposure = 0.8f; // the ACES fit is made for input scaled down a little: 0.8 keeps the old brightness
+    float gamma = 1.0f;    // the brightness setting for players, after the tone map
+    bool bloom = true;
+    float bloomStrength = 0.04f; // the part of the blurred light mixed into the image
+    float bloomRadius = 0.005f;  // in UV: larger = wider glow
+    float lampBrightness = 4.0f; // the point light spheres: above 1 they glow
 
     // Sun shadows.
     bool shadows = true;
@@ -45,17 +54,19 @@ public:
     int drawCalls = 0; // draw calls with the lit and lamp shaders in the last frame
     int instances = 0; // objects that those draw calls drew
 
-    // GPU time of each pass: Shadow, Scene, Post.
+    // GPU time of each pass: Shadow, Scene, Bloom, Post.
     // ponytail: the ImGui draw is not measured, it runs after render(). Mark it from the application if it grows.
     GpuProfiler profiler;
 
     // Builds again each shader whose files changed. Call between frames.
-    // ponytail: reads the write time of 10 files each frame. Check less often if the shader count grows.
+    // ponytail: reads the write time of 14 files each frame. Check less often if the shader count grows.
     void reloadChangedShaders();
 
     // For the debug panel.
     GLuint shadowMapTexture() const { return shadowMap.textureId(); }
-    std::array<const Shader*, 5> shaders() const { return {&lit, &lamp, &post, &depth, &skybox}; }
+    std::array<const Shader*, 7> shaders() const {
+        return {&lit, &lamp, &post, &depth, &skybox, &bloomPass.down, &bloomPass.up};
+    }
 
     Renderer(const Renderer&) = delete;
     Renderer& operator=(const Renderer&) = delete;
@@ -92,5 +103,6 @@ private:
     Texture white; // bound wherever a material has no map
     Framebuffer sceneTarget;
     ShadowMap shadowMap;
+    Bloom bloomPass;
     GLuint emptyVao = 0;
 };

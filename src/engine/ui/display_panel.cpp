@@ -58,7 +58,7 @@ static DisplayRequest request;
 static void displaySettings(GLFWwindow* window) {
     static const std::vector<Resolution> resolutions = supportedResolutions(glfwGetPrimaryMonitor());
 
-    const bool fullscreen = glfwGetWindowMonitor(window) != nullptr;
+    const bool fullscreen = !glfwGetWindowAttrib(window, GLFW_DECORATED); // borderless
     int width, height;
     glfwGetWindowSize(window, &width, &height);
 
@@ -94,19 +94,28 @@ void applyDisplayChanges(GLFWwindow* window) {
         return;
 
     request.pending = false;
-    const bool fullscreen = glfwGetWindowMonitor(window) != nullptr;
+    const bool fullscreen = !glfwGetWindowAttrib(window, GLFW_DECORATED); // borderless
 
     if (request.fullscreen && !fullscreen) {
         glfwGetWindowPos(window, &windowedX, &windowedY);
         glfwGetWindowSize(window, &windowedWidth, &windowedHeight);
 
+        // Borderless: a normal window with no border that covers the monitor. A window given to the monitor
+        // (glfwSetWindowMonitor with a monitor) is exclusive full screen instead: the display switches mode, the
+        // screen goes black for a moment, and the driver can drop the sRGB format of the window.
         GLFWmonitor* monitor = glfwGetPrimaryMonitor();
         const GLFWvidmode* mode = glfwGetVideoMode(monitor);
-        glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
-
-        // Don't minimize when focus moves elsewhere (e.g. a click on another monitor).
-        glfwSetWindowAttrib(window, GLFW_AUTO_ICONIFY, GLFW_FALSE);
+        int monitorX, monitorY;
+        glfwGetMonitorPos(monitor, &monitorX, &monitorY);
+        // One pixel taller than the monitor: a window that covers the monitor exactly is taken out of the desktop
+        // compositor by Windows and the driver ("fullscreen optimizations"). With Windows HDR on, that switch
+        // turns the screen black for a moment. The extra row is off screen.
+        // ponytail: with a second monitor right below this one, the extra row shows on it. Use a different
+        // side then.
+        glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_FALSE);
+        glfwSetWindowMonitor(window, nullptr, monitorX, monitorY, mode->width, mode->height + 1, 0);
     } else if (!request.fullscreen && fullscreen) {
+        glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_TRUE);
         glfwSetWindowMonitor(window, nullptr, windowedX, windowedY, windowedWidth, windowedHeight, 0);
     } else if (!request.fullscreen) {
         glfwSetWindowSize(window, request.width, request.height);

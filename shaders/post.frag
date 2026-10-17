@@ -4,50 +4,50 @@ in vec2 vUV;
 
 out vec4 color;
 
-layout(binding = 0) uniform sampler2D scene; // linear values (sRGB texture, decoded when sampled)
+layout(binding = 0) uniform sampler2D scene; // HDR: linear values, can be above 1.0
+layout(binding = 1) uniform sampler2D bloom; // the blurred scene, at half size
 
-// Effect values, matching PostEffect in main.cpp.
-const int NONE = 0;
-const int GRAYSCALE = 1;
-const int INVERT = 2;
-const int BLUR = 3;
-const int SHARPEN = 4;
-const int EDGES = 5;
+// Tone map values, matching Renderer::ToneMap.
+const int CLIP = 0;
+const int REINHARD = 1;
+const int ACES = 2;
 
-uniform int effect;
-uniform float gamma; // user brightness calibration, 1.0 = neutral
+uniform bool bloomEnabled;
+uniform float bloomStrength; // how much of the bloom is mixed in
+uniform float exposure;      // multiplies the scene before the tone map
+uniform int toneMap;
+uniform float gamma;         // the player's brightness setting, 1.0 = neutral
 
-// Weighted sum of the 3x3 neighborhood around this pixel, kernel given row by row from the top.
-vec3 convolve(float k[9]) {
-    vec2 texel = 1.0 / vec2(textureSize(scene, 0));
-    vec3 sum = vec3(0.0);
+// The filmic curve of the Academy Color Encoding System, as fitted by Krzysztof Narkowicz. It rolls bright
+// values off softly towards 1.0, adds contrast and lowers the saturation of very bright colors, like film.
+vec3 aces(vec3 x) {
+    return clamp((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14), 0.0, 1.0);
+}
 
-    for (int y = 0; y < 3; y++) {
-        for (int x = 0; x < 3; x++) {
-            vec2 offset = vec2(x - 1, 1 - y) * texel;
-            sum += k[y * 3 + x] * texture(scene, vUV + offset).rgb;
-        }
-    }
-
-    return sum;
+// The exact sRGB curve: a short straight line near black, then a 1/2.4 power.
+vec3 linearToSrgb(vec3 c) {
+    return mix(c * 12.92, 1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055, step(0.0031308, c));
 }
 
 void main() {
     vec3 c = texture(scene, vUV).rgb;
 
-    if (effect == GRAYSCALE) {
-        // Luminance: the eye is most sensitive to green, least to blue.
-        c = vec3(dot(c, vec3(0.2126, 0.7152, 0.0722)));
-    } else if (effect == INVERT) {
-        c = 1.0 - c;
-    } else if (effect == BLUR) {
-        c = convolve(float[](1, 2, 1, 2, 4, 2, 1, 2, 1)) / 16.0;
-    } else if (effect == SHARPEN) {
-        c = convolve(float[](0, -1, 0, -1, 5, -1, 0, -1, 0));
-    } else if (effect == EDGES) {
-        c = convolve(float[](1, 1, 1, 1, -8, 1, 1, 1, 1));
-    }
+    // Bloom: a small part of the blurred light over the whole image. Only bright areas give a visible glow.
+    if (bloomEnabled)
+        c = mix(c, texture(bloom, vUV).rgb, bloomStrength);
 
-    c = pow(max(c, 0.0), vec3(1.0 / gamma));
-    color = vec4(c, 1.0);
+    // Tone map: HDR down to the 0..1 that the window can show.
+    c = max(c * exposure, 0.0);
+
+    if (toneMap == REINHARD)
+        c = c / (1.0 + c);
+    else if (toneMap == ACES)
+        c = aces(c);
+    else
+        c = min(c, 1.0); // clip: everything above white is white
+
+    // Gamma, then the sRGB encoding for the screen. Done here, not with GL_FRAMEBUFFER_SRGB: that needs an
+    // sRGB window, and the driver can give a window without one (e.g. after a switch to full screen).
+    c = pow(c, vec3(1.0 / gamma));
+    color = vec4(linearToSrgb(c), 1.0);
 }

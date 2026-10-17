@@ -6,6 +6,7 @@
 
 #include <GLFW/glfw3.h>
 #include <imgui.h>
+#include <imgui_internal.h> // ImGuiSettingsHandler, to save the layout size in imgui.ini
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 
@@ -16,12 +17,35 @@
 #include <string>
 #include <vector>
 
+// The window size that the panel layout was made for. It is saved in imgui.ini next to the panel positions, so
+// a layout saved at another size (e.g. in borderless full screen) is placed again at start-up.
+static ImVec2 layoutScreen{0.0f, 0.0f}; // the size the panels are placed for now
+static ImVec2 savedScreen{0.0f, 0.0f};  // read from imgui.ini, 0 if it has none
+
+static void addLayoutSettings() {
+    ImGuiSettingsHandler handler;
+    handler.TypeName = "DgfxLayout";
+    handler.TypeHash = ImHashStr("DgfxLayout");
+    handler.ReadOpenFn = [](ImGuiContext*, ImGuiSettingsHandler*, const char*) -> void* { return &savedScreen; };
+    handler.ReadLineFn = [](ImGuiContext*, ImGuiSettingsHandler*, void*, const char* line) {
+        float w, h;
+
+        if (std::sscanf(line, "Screen=%f,%f", &w, &h) == 2)
+            savedScreen = ImVec2(w, h);
+    };
+    handler.WriteAllFn = [](ImGuiContext*, ImGuiSettingsHandler* self, ImGuiTextBuffer* out) {
+        out->appendf("[%s][Main]\nScreen=%.0f,%.0f\n\n", self->TypeName, layoutScreen.x, layoutScreen.y);
+    };
+    ImGui::AddSettingsHandler(&handler); // copies the handler
+}
+
 Ui::Ui(GLFWwindow* window) {
     ImGui::CreateContext();
 
 #if !DGFX_EDITOR
     ImGui::GetIO().IniFilename = nullptr; // no panels to remember, so no imgui.ini next to the game
 #endif
+    addLayoutSettings(); // before the first frame, which reads imgui.ini
     ImGui_ImplGlfw_InitForOpenGL(window, true); // true = install its callbacks, chaining to existing ones
     ImGui_ImplOpenGL3_Init("#version 460");
     initUiScale();
@@ -186,15 +210,12 @@ std::string debugUI(Application& app) {
     const float hierarchyHeight = (height - margin) * 0.45f;
     const float rendererHeight = (height - margin) * 0.5f; // half the column; the display panel fits its content
 
-    // Place the panels again when the window size changes, so none of them stays off screen.
-    static ImVec2 lastScreen{0.0f, 0.0f};
-    const bool place = resetLayout || screen.x != lastScreen.x || screen.y != lastScreen.y;
-    const bool firstFrame = lastScreen.x == 0.0f;
-    lastScreen = screen;
+    // Place the panels again when the window size changes, so none of them stays off screen. On the first frame,
+    // the layout from imgui.ini stays when it was made for this window size.
+    const ImVec2 previous = layoutScreen.x == 0.0f ? savedScreen : layoutScreen;
+    const bool placeNow = resetLayout || screen.x != previous.x || screen.y != previous.y;
+    layoutScreen = screen;
     resetLayout = false;
-
-    // On the first frame, imgui.ini keeps the user's own layout.
-    const bool placeNow = place && !firstFrame;
 
     if (panels.hierarchy) {
         if (beginPanel("Hierarchy", &panels.hierarchy, ImVec2(margin, top), ImVec2(width, hierarchyHeight), placeNow))

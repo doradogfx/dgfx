@@ -49,9 +49,11 @@ void setLights(const Shader& shader, const WorldDirLight& dir, std::span<const W
 }
 
 static void colorsUI(glm::vec3& ambient, glm::vec3& diffuse, glm::vec3& specular) {
-    ImGui::ColorEdit3("Ambient", glm::value_ptr(ambient));
-    ImGui::ColorEdit3("Diffuse", glm::value_ptr(diffuse));
-    ImGui::ColorEdit3("Specular", glm::value_ptr(specular));
+    // HDR: the scene renders in floats, so a light can be brighter than white (values above 1).
+    const ImGuiColorEditFlags flags = ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float;
+    ImGui::ColorEdit3("Ambient", glm::value_ptr(ambient), flags);
+    ImGui::ColorEdit3("Diffuse", glm::value_ptr(diffuse), flags);
+    ImGui::ColorEdit3("Specular", glm::value_ptr(specular), flags);
 }
 
 static void attenuationUI(float& linear, float& quadratic) {

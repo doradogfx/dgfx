@@ -46,9 +46,17 @@ void rendererPanel(Renderer& renderer) {
     ImGui::Checkbox("Environment reflections", &renderer.reflections);
     ImGui::Checkbox("Fresnel", &renderer.fresnel);
 
-    ImGui::SeparatorText("Post-processing");
-    ImGui::Combo("Effect", &renderer.postEffect, "None\0Grayscale\0Invert\0Blur\0Sharpen\0Edge detection\0");
+    // The scene renders in HDR (floats), and this pass brings it to the screen. Not about an HDR monitor.
+    ImGui::SeparatorText("Tone mapping and bloom");
+    ImGui::Combo("Tone map", &renderer.toneMap, "Clip\0Reinhard\0ACES\0");
+    ImGui::SliderFloat("Exposure", &renderer.exposure, 0.1f, 4.0f, "%.2f");
     ImGui::SliderFloat("Gamma", &renderer.gamma, 0.5f, 2.0f, "%.2f");
+    ImGui::Checkbox("Bloom", &renderer.bloom);
+    ImGui::BeginDisabled(!renderer.bloom);
+    ImGui::SliderFloat("Bloom strength", &renderer.bloomStrength, 0.0f, 0.3f, "%.3f");
+    ImGui::SliderFloat("Bloom radius", &renderer.bloomRadius, 0.001f, 0.02f, "%.4f");
+    ImGui::EndDisabled();
+    ImGui::SliderFloat("Lamp brightness", &renderer.lampBrightness, 0.0f, 20.0f, "%.1f");
 
     ImGui::SeparatorText("Sun shadows");
     ImGui::Checkbox("Enabled", &renderer.shadows);

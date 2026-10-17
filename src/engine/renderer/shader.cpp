@@ -133,6 +133,10 @@ void Shader::setFloat(const char* name, float value) const {
     glProgramUniform1f(id, glGetUniformLocation(id, name), value);
 }
 
+void Shader::setVec2(const char* name, const glm::vec2& value) const {
+    glProgramUniform2fv(id, glGetUniformLocation(id, name), 1, glm::value_ptr(value));
+}
+
 void Shader::setVec3(const char* name, const glm::vec3& value) const {
     glProgramUniform3fv(id, glGetUniformLocation(id, name), 1, glm::value_ptr(value));
 }

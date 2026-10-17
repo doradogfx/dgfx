@@ -17,7 +17,6 @@ Window::Window() {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    glfwWindowHint(GLFW_SRGB_CAPABLE, GLFW_TRUE); // needed for GL_FRAMEBUFFER_SRGB on the default framebuffer
 
     // Open at 80% of the primary monitor's work area (the desktop minus the taskbar), centered, so the
     // window suits any monitor size.

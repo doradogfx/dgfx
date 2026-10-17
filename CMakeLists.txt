@@ -108,6 +108,7 @@ add_library(dgfx_engine STATIC
     src/engine/core/input.cpp
     src/engine/core/paths.cpp
     src/engine/core/window.cpp
+    src/engine/renderer/bloom.cpp
     src/engine/renderer/cubemap.cpp
     src/engine/renderer/framebuffer.cpp
     src/engine/renderer/gpu_profiler.cpp

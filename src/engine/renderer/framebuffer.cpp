@@ -34,15 +34,15 @@ void Framebuffer::create() {
     glGenFramebuffers(1, &fbo);
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 
-    // sRGB color texture: the scene writes linear values, which in plain 8 bits would leave very few levels
-    // for dark tones (visible banding). With GL_FRAMEBUFFER_SRGB on, writes are encoded to sRGB (precision
-    // where the eye needs it) and sampling decodes back to linear.
+    // Half-float color (HDR): values above 1.0 survive, so bright lights stay brighter than white until the post
+    // pass tone maps them. Floats also keep enough precision in the dark tones, where 8 bits would band.
+    // GL_FRAMEBUFFER_SRGB does nothing to a float target: it stores the linear values as they are.
     glGenTextures(1, &color);
     glBindTexture(GL_TEXTURE_2D, color);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB8_ALPHA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, nullptr);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    // Clamp so kernel effects sampling past the border repeat the edge instead of wrapping to the other side.
+    // Clamp so filters sampling past the border (bloom) repeat the edge instead of wrapping to the other side.
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, color, 0);

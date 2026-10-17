@@ -221,9 +221,6 @@ void Renderer::render(Scene& scene, int width, int height) {
     glEnable(GL_DEPTH_TEST);
     setCulling(faceCulling, GL_BACK);
 
-    // The scene is computed in linear space; the GPU encodes to sRGB when writing each pixel (and the clear).
-    glEnable(GL_FRAMEBUFFER_SRGB);
-
     glClearColor(0.01f, 0.01f, 0.01f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -262,6 +259,7 @@ void Renderer::render(Scene& scene, int width, int height) {
 
     for (size_t i = 0; i < points.size(); i++) {
         lamp.setVec3("lightColor", points[i].light.diffuse);
+        lamp.setFloat("brightness", lampBrightness);
         sphere.drawInstanced(1, firstLamp + static_cast<GLuint>(i));
         drawCalls++;
         instances++;
@@ -285,30 +283,38 @@ void Renderer::render(Scene& scene, int width, int height) {
 
     profiler.mark("Scene");
 
-    // Post pass: the scene texture through the post shader onto the window, one full-screen triangle.
-    // sRGB stays on, so the window gets the final encoding.
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glViewport(0, 0, width, height);
+    // The full-screen passes: one triangle each, no depth, no culling, filled even in wireframe mode.
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_CULL_FACE);
+    glBindVertexArray(emptyVao);
+
+    // Bloom pass: the scene down and up the bloom chain.
+    const GLuint bloomTexture = bloom ? bloomPass.apply(sceneTarget, width, height, bloomRadius) : 0;
+
+    profiler.mark("Bloom"); // also when bloom is off, so the list of passes stays the same
+
+    // Post pass: the HDR scene and the bloom through the post shader onto the window. It tone maps to 0..1 and
+    // encodes to sRGB itself, so the result does not depend on the format of the window.
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glViewport(0, 0, width, height);
 
     post.use();
-    post.setInt("effect", postEffect);
     post.setFloat("gamma", gamma);
+    post.setBool("bloomEnabled", bloom);
+    post.setFloat("bloomStrength", bloomStrength);
+    post.setFloat("exposure", exposure);
+    post.setInt("toneMap", toneMap);
     sceneTarget.bindColor(0);
-    glBindVertexArray(emptyVao);
+    glBindTextureUnit(1, bloomTexture);
     glDrawArrays(GL_TRIANGLES, 0, 3);
 
     profiler.mark("Post");
     profiler.endFrame();
-
-    // Leave sRGB off for whatever draws next (the UI is already sRGB).
-    glDisable(GL_FRAMEBUFFER_SRGB);
 }
 
 void Renderer::reloadChangedShaders() {
-    for (Shader* shader : {&lit, &lamp, &post, &depth, &skybox}) {
+    for (Shader* shader : {&lit, &lamp, &post, &depth, &skybox, &bloomPass.down, &bloomPass.up}) {
         if (shader->reloadIfChanged() && shader->error.empty())
             std::printf("Reloaded %s\n", shader->name().c_str()); // a failure prints its own error
     }
