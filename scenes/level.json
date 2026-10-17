@@ -58,6 +58,15 @@
           0.3
         ]
       },
+      "Sky": {
+        "ambientStrength": 0.5,
+        "mie": 0.15,
+        "moonLight": 0.15,
+        "rayleigh": 1.0,
+        "sunIntensity": 10.0,
+        "sunLight": 1.0,
+        "sunSize": 2.5
+      },
       "name": "Sun",
       "transform": {
         "position": [

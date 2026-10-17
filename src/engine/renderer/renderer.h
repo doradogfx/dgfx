@@ -6,6 +6,7 @@
 #include "renderer/mesh.h"
 #include "renderer/shader.h"
 #include "renderer/shadowmap.h"
+#include "renderer/sky.h"
 #include "renderer/texture.h"
 #include "scene/scene.h"
 
@@ -54,18 +55,18 @@ public:
     int drawCalls = 0; // draw calls with the lit and lamp shaders in the last frame
     int instances = 0; // objects that those draw calls drew
 
-    // GPU time of each pass: Shadow, Scene, Bloom, Post.
+    // GPU time of each pass: Sky, Shadow, Scene, Bloom, Post.
     // ponytail: the ImGui draw is not measured, it runs after render(). Mark it from the application if it grows.
     GpuProfiler profiler;
 
     // Builds again each shader whose files changed. Call between frames.
-    // ponytail: reads the write time of 14 files each frame. Check less often if the shader count grows.
+    // ponytail: reads the write time of 16 files each frame. Check less often if the shader count grows.
     void reloadChangedShaders();
 
     // For the debug panel.
     GLuint shadowMapTexture() const { return shadowMap.textureId(); }
-    std::array<const Shader*, 7> shaders() const {
-        return {&lit, &lamp, &post, &depth, &skybox, &bloomPass.down, &bloomPass.up};
+    std::array<const Shader*, 8> shaders() const {
+        return {&lit, &lamp, &post, &depth, &skybox, &bloomPass.down, &bloomPass.up, &proceduralSky.shader};
     }
 
     Renderer(const Renderer&) = delete;
@@ -88,6 +89,7 @@ private:
 
     void buildBatches(const Scene& scene);
     void drawBatch(const Batch& batch);
+    void bindSky(const Scene& scene, const Sky* sky, GLuint unit) const; // the procedural sky, or the scene's texture
 
     std::vector<Batch> batches;
     std::vector<Instance> instanceData;
@@ -104,5 +106,6 @@ private:
     Framebuffer sceneTarget;
     ShadowMap shadowMap;
     Bloom bloomPass;
+    ProceduralSky proceduralSky;
     GLuint emptyVao = 0;
 };

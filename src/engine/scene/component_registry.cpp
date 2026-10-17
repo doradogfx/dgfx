@@ -15,6 +15,7 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(DirLight, enabled, ambient, diff
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(PointLight, enabled, ambient, diffuse, specular, constant, linear, quadratic)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(SpotLight, enabled, ambient, diffuse, specular, constant, linear, quadratic, innerAngle, outerAngle)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Camera, fov, nearPlane, farPlane)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Sky, sunIntensity, sunLight, moonLight, rayleigh, mie, sunSize, ambientStrength)
 
 void ComponentRegistry::inspect(entt::registry& registry, entt::entity entity, Assets& assets) const {
     for (const Entry& entry : entries) {
@@ -84,6 +85,17 @@ void registerEngineComponents(ComponentRegistry& components) {
         ImGui::DragFloat("Field of view", &camera.fov, 0.5f, 1.0f, 120.0f, "%.1f deg");
         ImGui::DragFloat("Near", &camera.nearPlane, 0.01f, 0.01f, camera.farPlane, "%.2f");
         ImGui::DragFloat("Far", &camera.farPlane, 1.0f, camera.nearPlane, 10000.0f, "%.0f");
+    });
+
+    components.add<Sky>("Sky", [](Sky& sky) {
+        ImGui::TextDisabled("Rotate this entity to move the sun. The sky sets the light's colors.");
+        ImGui::DragFloat("Sky brightness", &sky.sunIntensity, 0.1f, 0.0f, 200.0f, "%.1f");
+        ImGui::DragFloat("Sun light", &sky.sunLight, 0.01f, 0.0f, 20.0f, "%.2f");
+        ImGui::DragFloat("Moon light", &sky.moonLight, 0.01f, 0.0f, 5.0f, "%.2f");
+        ImGui::DragFloat("Rayleigh (air)", &sky.rayleigh, 0.01f, 0.0f, 10.0f, "%.2f");
+        ImGui::DragFloat("Mie (haze)", &sky.mie, 0.01f, 0.0f, 20.0f, "%.2f");
+        ImGui::DragFloat("Sun size", &sky.sunSize, 0.01f, 0.05f, 10.0f, "%.2f deg");
+        ImGui::DragFloat("Ambient strength", &sky.ambientStrength, 0.01f, 0.0f, 10.0f, "%.2f");
     });
 
     components.add<MeshRenderer>(

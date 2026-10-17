@@ -117,6 +117,7 @@ add_library(dgfx_engine STATIC
     src/engine/renderer/renderer.cpp
     src/engine/renderer/shader.cpp
     src/engine/renderer/shadowmap.cpp
+    src/engine/renderer/sky.cpp
     src/engine/renderer/texture.cpp
     src/engine/scene/component_registry.cpp
     src/engine/scene/scene.cpp

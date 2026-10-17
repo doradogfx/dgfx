@@ -154,9 +154,12 @@ void Renderer::render(Scene& scene, int width, int height) {
     WorldDirLight sun;
     sun.light.enabled = false;
 
+    const Sky* sky = nullptr; // the procedural sky, on the sun's entity
+
     for (auto [entity, light] : registry.view<DirLight>().each()) {
         if (light.enabled) {
             sun = {light, scene.forward(entity)};
+            sky = registry.try_get<Sky>(entity);
             break;
         }
     }
@@ -175,9 +178,6 @@ void Renderer::render(Scene& scene, int width, int height) {
         break;
     }
 
-    const glm::mat4 lightSpace = sunLightSpace(sun.direction, shadowCenter, shadowRadius);
-    const bool castShadows = shadows && sun.light.enabled;
-
     // The data of every copy goes to the GPU once, in one buffer that both passes read. The point light lamps
     // come last, one copy each.
     buildBatches(scene);
@@ -192,6 +192,48 @@ void Renderer::render(Scene& scene, int width, int height) {
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, instanceBuffer);
 
     profiler.beginFrame();
+
+    // The procedural sky: draw it again if the sun moved, then let it light the scene. The sun's light takes the
+    // color of the sunlight that reaches the ground (white at noon, orange low, black below the horizon), at the
+    // strength the Sky asks for. The sky's average color becomes the ambient.
+    const glm::vec3 toSun = -glm::normalize(sun.direction);
+
+    if (sky) {
+        proceduralSky.update(*sky, toSun, cube);
+
+        // Night: the moon takes over the light, so the scene stays readable. It is opposite the sun, raised to at
+        // least 45 degrees so its light does not only graze the ground. It fades in over the first 10 degrees
+        // below the horizon (sin 10 = 0.17), where the sunlight is already gone.
+        const glm::vec3 moonColor = glm::vec3(0.6f, 0.75f, 1.0f) * sky->moonLight;
+        const float night = glm::smoothstep(0.0f, 0.17f, -toSun.y);
+
+        if (night > 0.0f) {
+            // Raised only when it is lower than 45 degrees. Its horizontal direction is then at least 0.7 long, so
+            // it never flips: a moon straight up (sun straight down) needs no horizontal direction at all.
+            const float sin45 = 0.70710678f;
+            glm::vec3 toMoon = -toSun;
+
+            if (toMoon.y < sin45) {
+                const glm::vec2 away = glm::normalize(glm::vec2(toMoon.x, toMoon.z)) * sin45;
+                toMoon = glm::vec3(away.x, sin45, away.y);
+            }
+
+            sun.direction = -toMoon;
+            sun.light.diffuse = sun.light.specular = moonColor * night;
+        } else {
+            sun.light.diffuse = sun.light.specular = ProceduralSky::sunColor(*sky, toSun) * sky->sunLight;
+        }
+
+        // A dim blue floor under the sky's light, day and night: at dusk the sunlight is weak and the sky is dark,
+        // and it keeps the sides away from the moon readable.
+        sun.light.ambient = proceduralSky.ambient() * sky->ambientStrength + moonColor * 0.5f;
+    }
+
+    profiler.mark("Sky"); // also without a sky, so the list of passes stays the same
+
+    // At night the sun's direction is the moon's, so the moon casts the shadows.
+    const glm::mat4 lightSpace = sunLightSpace(sun.direction, shadowCenter, shadowRadius);
+    const bool castShadows = shadows && sun.light.enabled;
 
     // Shadow pass: the scene's depth as the sun sees it. Lamps don't cast shadows.
     if (castShadows) {
@@ -242,10 +284,11 @@ void Renderer::render(Scene& scene, int width, int height) {
     lit.setBool("pcf", pcf);
     shadowMap.bindDepth(2);
 
-    lit.setBool("reflections", reflections && scene.sky);
+    // The environment that shiny materials reflect: the procedural sky, or the scene's sky texture.
+    const bool hasSky = sky || scene.sky;
+    lit.setBool("reflections", reflections && hasSky);
     lit.setBool("fresnel", fresnel);
-    if (scene.sky)
-        scene.sky->bind(3);
+    bindSky(scene, sky, 3);
 
     for (const Batch& batch : batches)
         drawBatch(batch);
@@ -268,14 +311,22 @@ void Renderer::render(Scene& scene, int width, int height) {
     // Sky last: its depth is 1.0, so the depth test skips every pixel an object already covered.
     // LEQUAL because it has to pass against the cleared depth, which is also 1.0.
     // Culling off because we're inside the cube, looking at its back faces.
-    if (showSkybox && scene.sky) {
+    if (showSkybox && hasSky) {
         glDepthFunc(GL_LEQUAL);
         glDisable(GL_CULL_FACE);
 
         skybox.use();
         skybox.setMat4("projection", projection);
         skybox.setMat4("view", view);
-        scene.sky->bind(0);
+        skybox.setBool("sunDisk", sky != nullptr);
+
+        if (sky) {
+            skybox.setVec3("toSun", toSun);
+            skybox.setVec3("sunColor", ProceduralSky::sunlight(*sky, toSun));
+            skybox.setFloat("sunCosSize", std::cos(glm::radians(sky->sunSize * 0.5f)));
+        }
+
+        bindSky(scene, sky, 0);
         cube.draw();
 
         glDepthFunc(GL_LESS);
@@ -314,8 +365,20 @@ void Renderer::render(Scene& scene, int width, int height) {
 }
 
 void Renderer::reloadChangedShaders() {
-    for (Shader* shader : {&lit, &lamp, &post, &depth, &skybox, &bloomPass.down, &bloomPass.up}) {
-        if (shader->reloadIfChanged() && shader->error.empty())
-            std::printf("Reloaded %s\n", shader->name().c_str()); // a failure prints its own error
+    for (Shader* shader : {&lit, &lamp, &post, &depth, &skybox, &bloomPass.down, &bloomPass.up, &proceduralSky.shader}) {
+        if (!shader->reloadIfChanged() || !shader->error.empty())
+            continue; // unchanged, or failed: a failure prints its own error
+
+        std::printf("Reloaded %s\n", shader->name().c_str());
+
+        if (shader == &proceduralSky.shader)
+            proceduralSky.invalidate(); // the cubemap was drawn with the old shader
     }
+}
+
+void Renderer::bindSky(const Scene& scene, const Sky* sky, GLuint unit) const {
+    if (sky)
+        proceduralSky.bind(unit);
+    else if (scene.sky)
+        scene.sky->bind(unit);
 }

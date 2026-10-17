@@ -44,3 +44,19 @@ struct Camera {
     float nearPlane = 0.1f;   // closer than this is not drawn
     float farPlane = 100.0f;  // farther than this is not drawn
 };
+
+// A sky made from sunlight scattered by the air, instead of the scene's sky texture. Put it on the entity with
+// the DirLight: that light is the sun. Its rotation moves the sun in the sky, and the sky sets the light's
+// colors (the sunlight that reaches the ground, and the light from the sky as ambient).
+struct Sky {
+    float sunIntensity = 10.0f;   // the brightness of the sky
+    float sunLight = 1.0f;        // the strength of the sun's light on the objects when it is straight up
+    float moonLight = 0.15f;      // the light at night, from opposite the sun
+    float rayleigh = 1.0f;        // x the air's scattering: more = deeper blue, redder sunsets
+    float mie = 0.15f;            // x the haze: more = whiter sky, bigger glow around the sun
+    float sunSize = 2.5f;         // the sun disk, in degrees. The real sun is 0.53, which looks tiny on a screen
+    float ambientStrength = 0.5f;  // x the light from the sky on the objects. Below 1: no ambient occlusion, so
+                                   // the full sky light would also reach places the sky cannot see
+
+    bool operator==(const Sky&) const = default;
+};
