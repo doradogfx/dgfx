@@ -32,8 +32,6 @@ uniform float shadowBiasMin;
 uniform float shadowBiasMax;
 uniform bool pcf;
 
-#define MAX_POINT_LIGHTS 4 // must match kMaxPointLights in light.h
-
 struct DirLight {
     bool enabled;
     vec3 direction;
@@ -42,35 +40,28 @@ struct DirLight {
     vec3 specular;
 };
 
-struct PointLight {
+// A point or spot light. Must match GpuLight in light.h. A point light has a cone wider than the sphere.
+struct Light {
     vec3 position;
-    vec3 ambient;
-    vec3 diffuse;
-    vec3 specular;
     float constant;
+    vec3 direction;
     float linear;
+    vec3 ambient;
     float quadratic;
+    vec3 diffuse;
+    float cutOff;      // cos of the inner angle
+    vec3 specular;
+    float outerCutOff; // cos of the outer angle
 };
 
-struct SpotLight {
-    bool enabled;
-    vec3 position;
-    vec3 direction;
-    vec3 ambient;
-    vec3 diffuse;
-    vec3 specular;
-    float constant;
-    float linear;
-    float quadratic;
-    float cutOff;      // cos of the inner angle
-    float outerCutOff; // cos of the outer angle
+// Binding 0 is the instances (lit.vert).
+layout(std430, binding = 1) readonly buffer Lights {
+    Light lights[];
 };
 
 uniform Material material;
 uniform DirLight dirLight;
-uniform PointLight pointLights[MAX_POINT_LIGHTS];
-uniform int numPointLights;
-uniform SpotLight spotLight;
+uniform int lightCount;
 uniform vec3 viewPos;
 uniform bool blinn;
 
@@ -143,13 +134,7 @@ vec3 calcDirLight(DirLight light) {
     return light.ambient * albedo + (1.0 - shadow) * shade(l, light.diffuse, light.specular);
 }
 
-vec3 calcPointLight(PointLight light) {
-    vec3 l = normalize(light.position - vPos);
-    float att = attenuation(light.position, light.constant, light.linear, light.quadratic);
-    return att * (light.ambient * albedo + shade(l, light.diffuse, light.specular));
-}
-
-vec3 calcSpotLight(SpotLight light) {
+vec3 calcLight(Light light) {
     vec3 l = normalize(light.position - vPos);
     float att = attenuation(light.position, light.constant, light.linear, light.quadratic);
 
@@ -174,11 +159,8 @@ void main() {
     if (dirLight.enabled)
         result += calcDirLight(dirLight);
 
-    for (int i = 0; i < numPointLights; i++)
-        result += calcPointLight(pointLights[i]);
-
-    if (spotLight.enabled)
-        result += calcSpotLight(spotLight);
+    for (int i = 0; i < lightCount; i++)
+        result += calcLight(lights[i]);
 
     // Environment: look the sky up along the view ray bent by the surface. Only the sky, not other objects.
     if (reflections && (material.reflectivity > 0.0 || material.refractivity > 0.0)) {

@@ -5,47 +5,27 @@
 
 #include <algorithm>
 #include <cmath>
-#include <string>
 
-void setLights(const Shader& shader, const WorldDirLight& dir, std::span<const WorldPointLight> points, const WorldSpotLight& spot) {
+void setSun(const Shader& shader, const WorldDirLight& dir) {
     shader.setBool("dirLight.enabled", dir.light.enabled);
     shader.setVec3("dirLight.direction", dir.direction);
     shader.setVec3("dirLight.ambient", dir.light.ambient);
     shader.setVec3("dirLight.diffuse", dir.light.diffuse);
     shader.setVec3("dirLight.specular", dir.light.specular);
+}
 
-    int count = 0;
+GpuLight toGpu(const WorldPointLight& point) {
+    const PointLight& l = point.light;
+    // cos is never below -1, so the cone fade is always 1: light in every direction.
+    return {point.position, l.constant, glm::vec3(0.0f, 0.0f, -1.0f), l.linear, l.ambient, l.quadratic,
+            l.diffuse, -1.0f, l.specular, -2.0f};
+}
 
-    for (const WorldPointLight& p : points) {
-        if (!p.light.enabled || count == kMaxPointLights)
-            continue;
-
-        const std::string prefix = "pointLights[" + std::to_string(count++) + "].";
-        auto name = [&](const char* field) { return prefix + field; };
-
-        shader.setVec3(name("position").c_str(), p.position);
-        shader.setVec3(name("ambient").c_str(), p.light.ambient);
-        shader.setVec3(name("diffuse").c_str(), p.light.diffuse);
-        shader.setVec3(name("specular").c_str(), p.light.specular);
-        shader.setFloat(name("constant").c_str(), p.light.constant);
-        shader.setFloat(name("linear").c_str(), p.light.linear);
-        shader.setFloat(name("quadratic").c_str(), p.light.quadratic);
-    }
-
-    shader.setInt("numPointLights", count);
-
-    shader.setBool("spotLight.enabled", spot.light.enabled);
-    shader.setVec3("spotLight.position", spot.position);
-    shader.setVec3("spotLight.direction", spot.direction);
-    shader.setVec3("spotLight.ambient", spot.light.ambient);
-    shader.setVec3("spotLight.diffuse", spot.light.diffuse);
-    shader.setVec3("spotLight.specular", spot.light.specular);
-    shader.setFloat("spotLight.constant", spot.light.constant);
-    shader.setFloat("spotLight.linear", spot.light.linear);
-    shader.setFloat("spotLight.quadratic", spot.light.quadratic);
+GpuLight toGpu(const WorldSpotLight& spot) {
+    const SpotLight& l = spot.light;
     // The shader compares cosines, so convert once here instead of per pixel.
-    shader.setFloat("spotLight.cutOff", std::cos(glm::radians(spot.light.innerAngle)));
-    shader.setFloat("spotLight.outerCutOff", std::cos(glm::radians(spot.light.outerAngle)));
+    return {spot.position, l.constant, spot.direction, l.linear, l.ambient, l.quadratic,
+            l.diffuse, std::cos(glm::radians(l.innerAngle)), l.specular, std::cos(glm::radians(l.outerAngle))};
 }
 
 static void colorsUI(glm::vec3& ambient, glm::vec3& diffuse, glm::vec3& specular) {

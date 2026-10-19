@@ -4,11 +4,6 @@
 
 #include <glm/glm.hpp>
 
-#include <span>
-
-// Must match MAX_POINT_LIGHTS in lit.frag.
-constexpr int kMaxPointLights = 4;
-
 // Light components only describe the light. Where it is and where it points come from the entity's
 // transform: position, and its local -Z axis as the direction.
 
@@ -73,8 +68,27 @@ struct WorldSpotLight {
     glm::vec3 direction{0.0f, 0.0f, -1.0f};
 };
 
-// Sends all lights to the shader. Only enabled point lights are sent, packed at the front of the array.
-void setLights(const Shader& shader, const WorldDirLight& dir, std::span<const WorldPointLight> points, const WorldSpotLight& spot);
+// One point or spot light as lit.frag reads it from the storage buffer (std430: each vec3 shares 16 bytes with
+// the float after it). A point light is a spot light with a cone wider than the sphere.
+struct GpuLight {
+    glm::vec3 position;
+    float constant;
+    glm::vec3 direction;
+    float linear;
+    glm::vec3 ambient;
+    float quadratic;
+    glm::vec3 diffuse;
+    float cutOff; // cos of the inner angle
+    glm::vec3 specular;
+    float outerCutOff; // cos of the outer angle
+};
+static_assert(sizeof(GpuLight) == 80, "must match struct Light in lit.frag");
+
+GpuLight toGpu(const WorldPointLight& point);
+GpuLight toGpu(const WorldSpotLight& spot);
+
+// Sends the sun to the shader as uniforms.
+void setSun(const Shader& shader, const WorldDirLight& dir);
 
 // ImGui widgets for editing a light.
 void lightUI(DirLight& light);

@@ -4,6 +4,7 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 
+#include <algorithm>
 #include <cstdio>
 #include <vector>
 
@@ -20,18 +21,22 @@ Renderer::Renderer()
       cube(makeCube()),
       sphere(makeSphere()),
       white(glm::vec3(1.0f)),
-      sceneTarget(1, 1), // render() resizes it to the window on the first frame
+      msaaTarget(1, 1, msaaSamples), // render() resizes both to the window on the first frame
+      sceneTarget(1, 1),
       shadowMap(shadowResolution) {
     // The post pass's full-screen triangle comes from gl_VertexID alone, but core profile still requires
     // a VAO to be bound for any draw, so an empty one.
     glGenVertexArrays(1, &emptyVao);
     glCreateBuffers(1, &instanceBuffer);
+    glCreateBuffers(1, &lightBuffer);
+    glGetIntegerv(GL_MAX_SAMPLES, &maxSamples);
 
     // Filter across cubemap face edges, otherwise seams show along the sky cube's edges.
     glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 }
 
 Renderer::~Renderer() {
+    glDeleteBuffers(1, &lightBuffer);
     glDeleteBuffers(1, &instanceBuffer);
     glDeleteVertexArrays(1, &emptyVao);
 }
@@ -148,9 +153,8 @@ void Renderer::render(Scene& scene, int width, int height) {
     const Camera& camera = registry.get<Camera>(cameraEntity);
     const glm::vec3 cameraPosition = scene.position(cameraEntity);
 
-    // Gather the lights from their entities. The shader takes one sun, up to kMaxPointLights point lights
-    // and one spot; extra ones are ignored. A missing light is sent disabled.
-    // Position and direction come from each light's entity transform.
+    // Gather the lights from their entities: one sun (uniforms), and any number of point and spot lights (a
+    // storage buffer). A missing sun is sent disabled. Position and direction come from each light's entity transform.
     WorldDirLight sun;
     sun.light.enabled = false;
 
@@ -164,19 +168,26 @@ void Renderer::render(Scene& scene, int width, int height) {
         }
     }
 
-    std::vector<WorldPointLight> points;
+    std::vector<WorldPointLight> points; // also kept for the lamps
+    lightData.clear();
 
     for (auto [entity, light] : registry.view<PointLight>().each()) {
-        if (light.enabled && points.size() < kMaxPointLights)
+        if (light.enabled) {
             points.push_back({light, scene.position(entity)});
+            lightData.push_back(toGpu(points.back()));
+        }
     }
-
-    WorldSpotLight spot;
 
     for (auto [entity, light] : registry.view<SpotLight>().each()) {
-        spot = {light, scene.position(entity), scene.forward(entity)};
-        break;
+        if (light.enabled)
+            lightData.push_back(toGpu(WorldSpotLight{light, scene.position(entity), scene.forward(entity)}));
     }
+
+    // At least one element: a buffer with no storage can't be bound.
+    const GLsizeiptr lightBytes = static_cast<GLsizeiptr>(std::max<size_t>(lightData.size(), 1) * sizeof(GpuLight));
+    glNamedBufferData(lightBuffer, lightBytes, nullptr, GL_STREAM_DRAW);
+    glNamedBufferSubData(lightBuffer, 0, static_cast<GLsizeiptr>(lightData.size() * sizeof(GpuLight)), lightData.data());
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, lightBuffer);
 
     // The data of every copy goes to the GPU once, in one buffer that both passes read. The point light lamps
     // come last, one copy each.
@@ -256,9 +267,14 @@ void Renderer::render(Scene& scene, int width, int height) {
 
     profiler.mark("Shadow"); // also when shadows are off, so the list of passes stays the same
 
-    // Scene pass: into the off-screen target.
+    // Scene pass: into the off-screen target, or with MSAA into the multisample one that is resolved after.
+    const bool msaa = msaaSamples > 1;
     sceneTarget.resize(width, height);
-    sceneTarget.bind();
+
+    if (msaa)
+        msaaTarget.resize(width, height, msaaSamples);
+
+    (msaa ? msaaTarget : sceneTarget).bind();
     glPolygonMode(GL_FRONT_AND_BACK, wireframe ? GL_LINE : GL_FILL);
     glEnable(GL_DEPTH_TEST);
     setCulling(faceCulling, GL_BACK);
@@ -275,7 +291,8 @@ void Renderer::render(Scene& scene, int width, int height) {
     lit.setMat4("view", view);
     lit.setVec3("viewPos", cameraPosition);
     lit.setBool("blinn", blinn);
-    setLights(lit, sun, points, spot);
+    setSun(lit, sun);
+    lit.setInt("lightCount", static_cast<int>(lightData.size()));
 
     lit.setMat4("lightSpace", lightSpace);
     lit.setBool("shadowsEnabled", castShadows);
@@ -333,6 +350,11 @@ void Renderer::render(Scene& scene, int width, int height) {
     }
 
     profiler.mark("Scene");
+
+    if (msaa)
+        msaaTarget.resolveTo(sceneTarget);
+
+    profiler.mark("Resolve"); // also when MSAA is off, so the list of passes stays the same
 
     // The full-screen passes: one triangle each, no depth, no culling, filled even in wireframe mode.
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);

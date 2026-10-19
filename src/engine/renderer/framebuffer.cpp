@@ -2,7 +2,7 @@
 
 #include <cstdio>
 
-Framebuffer::Framebuffer(int width, int height) : width(width), height(height) {
+Framebuffer::Framebuffer(int width, int height, int samples) : width(width), height(height), samples(samples) {
     create();
 }
 
@@ -10,13 +10,14 @@ Framebuffer::~Framebuffer() {
     destroy();
 }
 
-void Framebuffer::resize(int newWidth, int newHeight) {
-    if (newWidth == width && newHeight == height)
+void Framebuffer::resize(int newWidth, int newHeight, int newSamples) {
+    if (newWidth == width && newHeight == height && newSamples == samples)
         return;
 
     destroy();
     width = newWidth;
     height = newHeight;
+    samples = newSamples;
     create();
 }
 
@@ -30,9 +31,30 @@ void Framebuffer::bindColor(GLuint unit) const {
     glBindTexture(GL_TEXTURE_2D, color);
 }
 
+// ponytail: the blit averages HDR values before the tone map, so one very bright sample (the sun disk, a lamp)
+// can still make a hard edge. If it shows, resolve in a shader that tone maps each sample first.
+void Framebuffer::resolveTo(const Framebuffer& target) const {
+    glBlitNamedFramebuffer(fbo, target.fbo, 0, 0, width, height, 0, 0, target.width, target.height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+}
+
 void Framebuffer::create() {
     glGenFramebuffers(1, &fbo);
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+
+    if (samples > 1) {
+        // Multisample: color and depth keep `samples` values per pixel, so edges average to smooth steps.
+        glGenRenderbuffers(1, &colorSamples);
+        glBindRenderbuffer(GL_RENDERBUFFER, colorSamples);
+        glRenderbufferStorageMultisample(GL_RENDERBUFFER, samples, GL_RGBA16F, width, height);
+        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, colorSamples);
+
+        glGenRenderbuffers(1, &depth);
+        glBindRenderbuffer(GL_RENDERBUFFER, depth);
+        glRenderbufferStorageMultisample(GL_RENDERBUFFER, samples, GL_DEPTH_COMPONENT24, width, height);
+        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth);
+        checkComplete();
+        return;
+    }
 
     // Half-float color (HDR): values above 1.0 survive, so bright lights stay brighter than white until the post
     // pass tone maps them. Floats also keep enough precision in the dark tones, where 8 bits would band.
@@ -53,14 +75,19 @@ void Framebuffer::create() {
     glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, width, height);
     glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth);
 
+    checkComplete();
+}
+
+void Framebuffer::checkComplete() const {
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-        std::fprintf(stderr, "Framebuffer %dx%d is incomplete\n", width, height);
+        std::fprintf(stderr, "Framebuffer %dx%d (%d samples) is incomplete\n", width, height, samples);
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 void Framebuffer::destroy() {
     glDeleteRenderbuffers(1, &depth);
+    glDeleteRenderbuffers(1, &colorSamples);
     glDeleteTextures(1, &color);
     glDeleteFramebuffers(1, &fbo);
 }

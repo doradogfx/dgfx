@@ -3,6 +3,7 @@
 #include "renderer/bloom.h"
 #include "renderer/framebuffer.h"
 #include "renderer/gpu_profiler.h"
+#include "renderer/light.h"
 #include "renderer/mesh.h"
 #include "renderer/shader.h"
 #include "renderer/shadowmap.h"
@@ -25,6 +26,8 @@ public:
     bool showSkybox = true;
     bool reflections = true;
     bool fresnel = true;
+    int msaaSamples = 4; // anti-aliasing: samples per pixel, 1 = off
+    int maxSamples = 4;  // what the GPU supports, set at start-up
 
     // HDR: the scene renders in floats, so lights can be brighter than white. The post pass brings it down to
     // what the screen can show (the tone map), after it mixes in the bloom.
@@ -94,6 +97,8 @@ private:
     std::vector<Batch> batches;
     std::vector<Instance> instanceData;
     GLuint instanceBuffer = 0;
+    std::vector<GpuLight> lightData; // the point and spot lights
+    GLuint lightBuffer = 0;
 
     Shader lit;
     Shader lamp;
@@ -103,7 +108,8 @@ private:
     Mesh cube;   // the sky
     Mesh sphere; // the point light lamps
     Texture white; // bound wherever a material has no map
-    Framebuffer sceneTarget;
+    Framebuffer msaaTarget;  // the scene pass draws here when MSAA is on
+    Framebuffer sceneTarget; // the resolved scene that bloom and post read
     ShadowMap shadowMap;
     Bloom bloomPass;
     ProceduralSky proceduralSky;

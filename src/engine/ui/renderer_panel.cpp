@@ -4,6 +4,7 @@
 
 #include <imgui.h>
 
+#include <algorithm>
 #include <string>
 
 void rendererPanel(Renderer& renderer) {
@@ -45,6 +46,18 @@ void rendererPanel(Renderer& renderer) {
     ImGui::Checkbox("Skybox", &renderer.showSkybox);
     ImGui::Checkbox("Environment reflections", &renderer.reflections);
     ImGui::Checkbox("Fresnel", &renderer.fresnel);
+
+    // MSAA smooths the edges of shapes, not the inside of textures or highlights.
+    auto samplesName = [](int samples) { return samples > 1 ? std::to_string(samples) + "x" : std::string("Off"); };
+
+    if (ImGui::BeginCombo("Anti-aliasing (MSAA)", samplesName(renderer.msaaSamples).c_str())) {
+        for (int samples = 1; samples <= std::min(8, renderer.maxSamples); samples *= 2) {
+            if (ImGui::Selectable(samplesName(samples).c_str(), renderer.msaaSamples == samples))
+                renderer.msaaSamples = samples;
+        }
+
+        ImGui::EndCombo();
+    }
 
     // The scene renders in HDR (floats), and this pass brings it to the screen. Not about an HDR monitor.
     ImGui::SeparatorText("Tone mapping and bloom");
