@@ -305,6 +305,7 @@ void Renderer::render(Scene& scene, int width, int height) {
     const bool hasSky = sky || scene.sky;
     lit.setBool("reflections", reflections && hasSky);
     lit.setBool("fresnel", fresnel);
+    lit.setFloat("fogDensity", sky ? sky->fogDensity : 0.0f);
     bindSky(scene, sky, 3);
 
     for (const Batch& batch : batches)

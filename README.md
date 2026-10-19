@@ -35,7 +35,7 @@ A simplified 3D survivors-like built on the engine.
   - Environment reflections and refraction from the skybox, with Fresnel.
   - Directional shadow mapping for the sun.
 - **Skybox**: cubemap environment rendered behind the scene (depth at the far plane, camera translation removed).
-- **Procedural sky**: a `Sky` component on the sun makes the sky from sunlight scattered by the air (Rayleigh and Mie, single scattering). Rotate the sun and the sky goes from blue to sunset to night; the sun's light and the ambient follow it. The sky is drawn into a cubemap only when the sun moves, so shiny materials reflect it.
+- **Procedural sky**: a `Sky` component on the sun makes the sky from sunlight scattered by the air (Rayleigh and Mie, single scattering). Rotate the sun and the sky goes from blue to sunset to night; the sun's light and the ambient follow it. The sky is drawn into a cubemap only when the sun moves, so shiny materials reflect it. Distance fog fades far surfaces into the sky's color.
 - **Anti-aliasing**: MSAA (2x/4x/8x) on the HDR scene target, resolved before bloom.
 - **HDR**: the scene renders to a half-float framebuffer, so lights can be brighter than white. Tone mapping (ACES, Reinhard or clip) with exposure brings it to a normal (SDR) screen.
 - **Bloom**: bright areas glow. The scene is filtered down a chain of 6 smaller textures and back up (the Call of Duty: Advanced Warfare method), then mixed in.

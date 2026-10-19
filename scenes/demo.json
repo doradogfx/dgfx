@@ -460,6 +460,7 @@
       },
       "Sky": {
         "ambientStrength": 0.5,
+        "fogDensity": 0.03,
         "mie": 0.15,
         "moonLight": 0.15,
         "rayleigh": 1.0,

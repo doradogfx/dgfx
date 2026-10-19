@@ -64,6 +64,7 @@ uniform DirLight dirLight;
 uniform int lightCount;
 uniform vec3 viewPos;
 uniform bool blinn;
+uniform float fogDensity; // 0 = no fog
 
 // Per-pixel surface values, set once in main() and shared by every light.
 vec3 n;         // normal
@@ -180,6 +181,14 @@ void main() {
         amount *= texture(specularMap, vUV).r;
         vec3 reflected = texture(environment, reflect(-v, n)).rgb * material.specular;
         result = mix(result, reflected, amount);
+    }
+
+    // Fog: far surfaces fade into the sky behind them (aerial perspective), so the edge of the ground meets the sky
+    // with no line.
+    if (fogDensity > 0.0) {
+        vec3 fogColor = textureLod(environment, normalize(vPos - viewPos), 0.0).rgb;
+        float d = length(vPos - viewPos) * fogDensity;
+        result = mix(result, fogColor, 1.0 - exp(-d * d));
     }
 
     color = vec4(result, 1.0);

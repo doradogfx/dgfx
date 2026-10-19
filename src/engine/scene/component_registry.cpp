@@ -15,7 +15,7 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(DirLight, enabled, ambient, diff
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(PointLight, enabled, ambient, diffuse, specular, constant, linear, quadratic)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(SpotLight, enabled, ambient, diffuse, specular, constant, linear, quadratic, innerAngle, outerAngle)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Camera, fov, nearPlane, farPlane)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Sky, sunIntensity, sunLight, moonLight, rayleigh, mie, sunSize, ambientStrength)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Sky, sunIntensity, sunLight, moonLight, rayleigh, mie, sunSize, ambientStrength, fogDensity)
 
 void ComponentRegistry::inspect(entt::registry& registry, entt::entity entity, Assets& assets) const {
     for (const Entry& entry : entries) {
@@ -96,6 +96,7 @@ void registerEngineComponents(ComponentRegistry& components) {
         ImGui::DragFloat("Mie (haze)", &sky.mie, 0.01f, 0.0f, 20.0f, "%.2f");
         ImGui::DragFloat("Sun size", &sky.sunSize, 0.01f, 0.05f, 10.0f, "%.2f deg");
         ImGui::DragFloat("Ambient strength", &sky.ambientStrength, 0.01f, 0.0f, 10.0f, "%.2f");
+        ImGui::DragFloat("Fog density", &sky.fogDensity, 0.0005f, 0.0f, 0.2f, "%.4f");
     });
 
     components.add<MeshRenderer>(

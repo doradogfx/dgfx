@@ -57,6 +57,7 @@ struct Sky {
     float sunSize = 2.5f;         // the sun disk, in degrees. The real sun is 0.53, which looks tiny on a screen
     float ambientStrength = 0.5f;  // x the light from the sky on the objects. Below 1: no ambient occlusion, so
                                    // the full sky light would also reach places the sky cannot see
+    float fogDensity = 0.03f;     // far surfaces fade into the sky. 0 = no fog
 
     bool operator==(const Sky&) const = default;
 };
